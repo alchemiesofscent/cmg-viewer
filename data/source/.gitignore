@@ -1,0 +1,4 @@
+# Populated by scripts/sync.py. The local cache makes offline rebuilds possible,
+# but upstream snapshots and per-page info.json responses are generated data.
+*
+!.gitignore

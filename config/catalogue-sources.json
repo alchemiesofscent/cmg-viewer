@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-08-25",
+  "upstreamBaseUrl": "https://cmg.bbaw.de/epubl/online/",
+  "allowedHosts": [
+    "cmg.bbaw.de",
+    "digilib.bbaw.de"
+  ],
+  "catalogueSources": [
+    {
+      "id": "cmg",
+      "label": "Corpus Medicorum Graecorum",
+      "collection": "CMG",
+      "path": "editionen.html",
+      "url": "https://cmg.bbaw.de/epubl/online/editionen.html"
+    },
+    {
+      "id": "cmg-supplementum",
+      "label": "Corpus Medicorum Graecorum Supplementum",
+      "collection": "CMG Supplementum",
+      "path": "publisuppl.html",
+      "url": "https://cmg.bbaw.de/epubl/online/publisuppl.html"
+    },
+    {
+      "id": "cmg-supplementum-orientale",
+      "label": "Corpus Medicorum Graecorum Supplementum Orientale",
+      "collection": "CMG Supplementum Orientale",
+      "path": "publisupplor.html",
+      "url": "https://cmg.bbaw.de/epubl/online/publisupplor.html"
+    },
+    {
+      "id": "cml",
+      "label": "Corpus Medicorum Latinorum",
+      "collection": "CML",
+      "path": "publicml.html",
+      "url": "https://cmg.bbaw.de/epubl/online/publicml.html"
+    },
+    {
+      "id": "other-aetius",
+      "label": "Weitere Ausgaben: Aëtios",
+      "collection": "Weitere Ausgaben",
+      "path": "publiweitereausgaben_aetius.html",
+      "url": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_aetius.html"
+    },
+    {
+      "id": "other-alexander-tralles",
+      "label": "Weitere Ausgaben: Alexander von Tralles",
+      "collection": "Weitere Ausgaben",
+      "path": "publiweitereausgaben_alex_trall.html",
+      "url": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_alex_trall.html"
+    },
+    {
+      "id": "other-anonymus-londinensis",
+      "label": "Weitere Ausgaben: Anonymus Londinensis",
+      "collection": "Weitere Ausgaben",
+      "path": "publiweitereausgaben_anon_lond.html",
+      "url": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_anon_lond.html"
+    },
+    {
+      "id": "other-dioscurides",
+      "label": "Weitere Ausgaben: Dioscurides",
+      "collection": "Weitere Ausgaben",
+      "path": "publiweitereausgaben_dioscurides.html",
+      "url": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_dioscurides.html"
+    },
+    {
+      "id": "other-galen",
+      "label": "Weitere Ausgaben: Galen",
+      "collection": "Weitere Ausgaben",
+      "path": "publiweitereausgaben_galen.html",
+      "url": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_galen.html"
+    },
+    {
+      "id": "other-hippocrates",
+      "label": "Weitere Ausgaben: Hippocrates",
+      "collection": "Weitere Ausgaben",
+      "path": "publiweitereausgaben_hippocrates.html",
+      "url": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_hippocrates.html"
+    },
+    {
+      "id": "other-theodorus-priscianus",
+      "label": "Weitere Ausgaben: Theodorus Priscianus",
+      "collection": "Weitere Ausgaben",
+      "path": "publiweitereausgaben_theod_prisc.html",
+      "url": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_theod_prisc.html"
+    },
+    {
+      "id": "other-ideler",
+      "label": "Weitere Ausgaben: Ideler",
+      "collection": "Weitere Ausgaben",
+      "path": "publiweitereausgaben_ideler.html",
+      "url": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_ideler.html"
+    },
+    {
+      "id": "translations-galen",
+      "label": "Übersetzungen: Galen",
+      "collection": "Übersetzungen",
+      "path": "publiuebersetzungen_galen.html",
+      "url": "https://cmg.bbaw.de/epubl/online/publiuebersetzungen_galen.html"
+    }
+  ],
+  "explicitViewers": [
+    {
+      "id": "diels_01",
+      "label": "Diels Handschriftenkatalog: Vorwort",
+      "collection": "Diels",
+      "sourceId": "translations-galen",
+      "viewerPath": "diels_01.php",
+      "url": "https://cmg.bbaw.de/epubl/online/diels_01.php"
+    },
+    {
+      "id": "diels_02",
+      "label": "Diels Handschriftenkatalog: Teil I",
+      "collection": "Diels",
+      "sourceId": "translations-galen",
+      "viewerPath": "diels_02.php",
+      "url": "https://cmg.bbaw.de/epubl/online/diels_02.php"
+    },
+    {
+      "id": "diels_03",
+      "label": "Diels Handschriftenkatalog: Teil II",
+      "collection": "Diels",
+      "sourceId": "translations-galen",
+      "viewerPath": "diels_03.php",
+      "url": "https://cmg.bbaw.de/epubl/online/diels_03.php"
+    },
+    {
+      "id": "diels_04",
+      "label": "Diels Handschriftenkatalog: Bericht CMA",
+      "collection": "Diels",
+      "sourceId": "translations-galen",
+      "viewerPath": "diels_04.php",
+      "url": "https://cmg.bbaw.de/epubl/online/diels_04.php"
+    }
+  ],
+  "exclusions": [
+    {
+      "viewerPath": "kuehn.php",
+      "reason": "Concordance/search tool, not a scanned publication viewer."
+    },
+    {
+      "viewerPath": "littre.php",
+      "reason": "Concordance/search tool, not a scanned publication viewer."
+    },
+    {
+      "viewerPath": "suppl_or_05_01_xurspr.php",
+      "reason": "Auxiliary original-page helper for suppl_or_05_01.php, not a separate physical volume."
+    }
+  ],
+  "expectedCounts": {
+    "catalogueSources": 13,
+    "catalogueWorkLinks": 214,
+    "explicitViewerLinks": 4,
+    "searchableWorkEntries": 218,
+    "catalogueViewerEndpoints": 139,
+    "explicitViewerEndpoints": 4,
+    "physicalViewerEndpoints": 143,
+    "byCollection": {
+      "CMG": 55,
+      "CMG Supplementum": 6,
+      "CMG Supplementum Orientale": 7,
+      "CML": 8,
+      "Weitere Ausgaben": 43,
+      "Übersetzungen": 19,
+      "Diss_Schubring": 1,
+      "Diels": 4
+    }
+  }
+}

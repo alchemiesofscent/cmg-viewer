@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#172f3b">
+  <meta name="description" content="Read a digitized CMG volume with page-level links, contents, facing-page view, and full-resolution zoom.">
+  <title>CMG Reader · Loading volume</title>
+  <link rel="stylesheet" href="../../assets/base.css">
+  <link rel="stylesheet" href="../../assets/viewer.css">
+  <script type="module" src="../../assets/viewer.js"></script>
+</head>
+<body class="viewer-page" data-volume-id="__VOLUME_ID__">
+  <a class="skip-link" href="#reader-stage">Skip to page image</a>
+
+  <div class="reader-app">
+    <header class="reader-header">
+      <a class="reader-brand" id="catalogue-link" href="../../" aria-label="Return to the catalogue">
+        <span class="reader-brand-mark">CMG</span>
+        <span class="reader-brand-label">Reader</span>
+      </a>
+
+      <div class="volume-identity">
+        <h1 id="volume-title">Loading volume…</h1>
+        <p id="volume-meta"></p>
+      </div>
+
+      <nav class="header-actions" aria-label="Volume links">
+        <a class="header-action" id="cmg-source" href="https://cmg.bbaw.de/epubl/online/editionen.html" rel="external noopener" target="_blank" aria-label="View this scan at CMG">
+          <span class="wide-label">View at CMG</span><span aria-hidden="true">↗</span>
+        </a>
+        <button class="header-action" id="share-view" type="button" aria-label="Copy a link to this view">
+          <span class="wide-label">Copy link</span><span aria-hidden="true">⌁</span>
+        </button>
+      </nav>
+    </header>
+
+    <nav class="reader-toolbar" aria-label="Reader controls">
+      <button class="tool-button contents-toggle" id="contents-toggle" type="button" aria-expanded="false" aria-controls="contents-drawer">
+        <span aria-hidden="true">☰</span><span>Contents</span>
+      </button>
+
+      <div class="page-controls" aria-label="Page navigation">
+        <button class="tool-button square" id="previous-page" type="button" aria-label="Previous page">←</button>
+        <form class="page-jump" id="page-jump-form">
+          <label for="page-order">Scan order</label>
+          <input id="page-order" name="pn" type="number" inputmode="numeric" step="1" aria-describedby="page-status">
+        </form>
+        <span class="page-status" id="page-status">—</span>
+        <button class="tool-button square" id="next-page" type="button" aria-label="Next page">→</button>
+      </div>
+
+      <div class="toolbar-spacer"></div>
+
+      <div class="segmented-control" aria-label="Page layout">
+        <button id="single-page" type="button" aria-pressed="false" title="Single page">1 page</button>
+        <button id="two-pages" type="button" aria-pressed="false" title="Facing pages">2 pages</button>
+      </div>
+
+      <div class="zoom-controls" aria-label="Zoom">
+        <button class="tool-button square" id="zoom-out" type="button" aria-label="Zoom out">−</button>
+        <button class="tool-button reset-zoom" id="reset-zoom" type="button">Fit</button>
+        <button class="tool-button square" id="zoom-in" type="button" aria-label="Zoom in">+</button>
+      </div>
+
+      <button class="tool-button square fullscreen-button" id="fullscreen" type="button" aria-label="Enter full screen">⛶</button>
+    </nav>
+
+    <main class="reader-stage" id="reader-stage" tabindex="-1" aria-label="Digitized volume">
+      <div id="tify" hidden></div>
+
+      <section class="fallback-reader" id="fallback-reader" aria-label="Page image viewer" hidden>
+        <div class="fallback-scroll" id="fallback-scroll">
+          <div class="fallback-pages" id="fallback-pages"></div>
+        </div>
+        <p class="fallback-note" id="fallback-note">Basic reader active. Full-resolution images are loaded directly from BBAW.</p>
+      </section>
+
+      <div class="reader-loading" id="reader-loading" role="status" aria-live="polite">
+        <div class="loading-card">
+          <span class="spinner" aria-hidden="true"></span>
+          <div>
+            <strong id="loading-title">Preparing the volume</strong>
+            <span id="loading-detail">Loading its description and IIIF manifest…</span>
+          </div>
+        </div>
+      </div>
+
+      <section class="reader-error" id="reader-error" role="alert" hidden>
+        <p class="eyebrow">Reader unavailable</p>
+        <h2>This volume could not be opened.</h2>
+        <p id="reader-error-message">The page data may be temporarily unavailable.</p>
+        <div class="error-actions">
+          <button class="button button-primary" id="retry-reader" type="button">Try again</button>
+          <a class="button button-secondary" id="error-cmg-link" href="https://cmg.bbaw.de/epubl/online/editionen.html">Open the CMG catalogue</a>
+        </div>
+      </section>
+    </main>
+
+    <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+    <aside class="contents-drawer" id="contents-drawer" role="dialog" aria-modal="true" aria-labelledby="contents-heading" aria-hidden="true" inert>
+      <header class="drawer-header">
+        <div>
+          <p class="eyebrow">This volume</p>
+          <h2 id="contents-heading">Contents</h2>
+        </div>
+        <button class="drawer-close" id="contents-close" type="button" aria-label="Close contents">×</button>
+      </header>
+      <nav class="contents-list" id="contents-list" aria-label="Logical contents">
+        <p class="contents-loading">Loading contents…</p>
+      </nav>
+      <footer class="drawer-footer" id="contents-provenance" hidden>
+        Contents combine the BBAW viewer and METS record. Labels identify their source where useful.
+      </footer>
+    </aside>
+
+    <div class="reader-live" id="reader-live" role="status" aria-live="polite" aria-atomic="true"></div>
+  </div>
+
+  <noscript>
+    <div class="noscript-message">This image reader needs JavaScript. You can still use the “View at CMG” link above.</div>
+  </noscript>
+</body>
+</html>

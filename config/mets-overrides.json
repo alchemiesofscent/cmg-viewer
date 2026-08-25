@@ -1,0 +1,269 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-08-25",
+  "metsBaseUrl": "https://cmg.bbaw.de/epubl/online/mets/",
+  "defaultPattern": "mets/{viewerStem}.xml",
+  "expectedCounts": {
+    "physicalViewerEndpoints": 143,
+    "predictableMets": 99,
+    "overrideMets": 18,
+    "reliableMets": 117,
+    "fallbackViewers": 26
+  },
+  "overrides": [
+    {
+      "viewerId": "cml_06_01",
+      "viewerPath": "cml_06_01.php",
+      "metsPath": "mets/cml_06.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "diels_01",
+      "viewerPath": "diels_01.php",
+      "metsPath": "mets/diels_handschriften_vorwort.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "diels_02",
+      "viewerPath": "diels_02.php",
+      "metsPath": "mets/diels_handschriften-01.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "diels_03",
+      "viewerPath": "diels_03.php",
+      "metsPath": "mets/diels_handschriften-02.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "diels_04",
+      "viewerPath": "diels_04.php",
+      "metsPath": "mets/diels_bericht_cma.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "suppl_or_05_01",
+      "viewerPath": "suppl_or_05_01.php",
+      "metsPath": "mets/suppl_or_05.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "wa_Aetios_Logos_12",
+      "viewerPath": "wa_Aetios_Logos_12.php",
+      "metsPath": "mets/WA_Aetius_12.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "wa_Aetios_Logos_16",
+      "viewerPath": "wa_Aetios_Logos_16.php",
+      "metsPath": "mets/wa_aet_lib_med_XVI.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "wa_Athena_18_1905",
+      "viewerPath": "wa_Athena_18_1905.php",
+      "metsPath": "mets/wa_aet_lib_med_XIII.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "wa_Athena_21_1909",
+      "viewerPath": "wa_Athena_21_1909.php",
+      "metsPath": "mets/wa_aet_lib_med_XV.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "wa_Athena_23_1911",
+      "viewerPath": "wa_Athena_23_1911.php",
+      "metsPath": "mets/wa_aet_lib_med_IX.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "wa_dietz_gal_dissec_musc",
+      "viewerPath": "wa_dietz_gal_dissec_musc.php",
+      "metsPath": "mets/wa_Dietz_Gal_dissec_musc.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "wa_gal_medizin_namen",
+      "viewerPath": "wa_gal_medizin_namen.php",
+      "metsPath": "mets/wa_Gal_medizin_Namen.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "wa_gossen_gal_synops_puls",
+      "viewerPath": "wa_gossen_gal_synops_puls.php",
+      "metsPath": "mets/wa_Gossen_Gal_synops_puls.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "wa_minor_gal_diff_resp",
+      "viewerPath": "wa_minor_gal_diff_resp.php",
+      "metsPath": "mets/wa_Minor_Gal_diff_resp.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "wa_mueller_ueber_galens_werk_vom_wiss_Beweis",
+      "viewerPath": "wa_mueller_ueber_galens_werk_vom_wiss_Beweis.php",
+      "metsPath": "mets/wa_Mueller_Ueber_Galens_Werk_vom_wiss_Beweis.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "wa_simon_anatomie_bd_1",
+      "viewerPath": "wa_simon_anatomie_bd_1.php",
+      "metsPath": "mets/wa_Gal_Anatomie_Simon_Bd_1.xml",
+      "evidence": "active-dfg-viewer-link"
+    },
+    {
+      "viewerId": "wa_simon_gal_sieben_buecher_anatom",
+      "viewerPath": "wa_simon_gal_sieben_buecher_anatom.php",
+      "metsPath": "mets/wa_Simon_Gal_Sieben_Buecher_Anatom.xml",
+      "evidence": "active-dfg-viewer-link"
+    }
+  ],
+  "verifiedPredictableWithoutActiveLink": [
+    "wa_prisc_eupor"
+  ],
+  "legacyAliases": [
+    {
+      "viewerId": "cmg_01_01_02",
+      "preferredMetsPath": "mets/cmg_01_01_02.xml",
+      "legacyLinkedMetsPath": "mets/CMG_01_01_02_00.xml",
+      "reason": "The predictable document is live and structurally valid; the legacy viewer's active DFG link names a second valid document."
+    }
+  ],
+  "fallbacks": [
+    {
+      "viewerId": "Diss_Schubring",
+      "viewerPath": "Diss_Schubring.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wa_Alex_Trall_Puschmann_01",
+      "viewerPath": "wa_Alex_Trall_Puschmann_01.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wa_Alex_Trall_Puschmann_02",
+      "viewerPath": "wa_Alex_Trall_Puschmann_02.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wa_Diss_Reedy",
+      "viewerPath": "wa_Diss_Reedy.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wa_Gal_Siebenmonatskinder_Walzer",
+      "viewerPath": "wa_Gal_Siebenmonatskinder_Walzer.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wa_Physici_Medici_Graeci_Ideler_01",
+      "viewerPath": "wa_Physici_Medici_Graeci_Ideler_01.php",
+      "fallbackPageCount": 446,
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wa_Physici_Medici_Graeci_Ideler_02",
+      "viewerPath": "wa_Physici_Medici_Graeci_Ideler_02.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wu_Gal_allgemeineWundbehandlung_Schroeder",
+      "viewerPath": "wu_Gal_allgemeineWundbehandlung_Schroeder.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wu_Gal_allgemeineTherapie_Beek",
+      "viewerPath": "wu_Gal_allgemeineTherapie_Beek.php",
+      "reason": "predictable-mets-path-returned-non-mets-content"
+    },
+    {
+      "viewerId": "wu_Gal_allgemeineTherapie_Carney",
+      "viewerPath": "wu_Gal_allgemeineTherapie_Carney.php",
+      "reason": "predictable-mets-path-returned-non-mets-content"
+    },
+    {
+      "viewerId": "wu_Gal_Ballspiel_Wenkebach",
+      "viewerPath": "wu_Gal_Ballspiel_Wenkebach.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wu_Gal_DiaetetPhysikTherapie_Beck",
+      "viewerPath": "wu_Gal_DiaetetPhysikTherapie_Beck.php",
+      "reason": "predictable-mets-path-returned-non-mets-content"
+    },
+    {
+      "viewerId": "wu_Gal_Geschwuer_Pruesmann",
+      "viewerPath": "wu_Gal_Geschwuer_Pruesmann.php",
+      "fallbackPageCount": 31,
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wu_Gal_IL_Mau",
+      "viewerPath": "wu_Gal_IL_Mau.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wu_Gal_PurgMedFac_Ehlert",
+      "viewerPath": "wu_Gal_PurgMedFac_Ehlert.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wu_Gal_Therapie_Brink",
+      "viewerPath": "wu_Gal_Therapie_Brink.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wu_Gal_Therapie_Meyer",
+      "viewerPath": "wu_Gal_Therapie_Meyer.php",
+      "reason": "predictable-mets-path-returned-non-mets-content"
+    },
+    {
+      "viewerId": "wu_Gal_Therapie_Szczepanski",
+      "viewerPath": "wu_Gal_Therapie_Szczepanski.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wu_Gal_Therapie_Tietz",
+      "viewerPath": "wu_Gal_Therapie_Tietz.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wu_Gal_Therapie_Wandersleben",
+      "viewerPath": "wu_Gal_Therapie_Wandersleben.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wu_Gal_WunduGeschwuersheilung_Glaser",
+      "viewerPath": "wu_Gal_WunduGeschwuersheilung_Glaser.php",
+      "reason": "predictable-mets-path-returned-non-mets-content"
+    },
+    {
+      "viewerId": "wu_Werke_des_Galenos_Bd_I",
+      "viewerPath": "wu_Werke_des_Galenos_Bd_I.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wu_Werke_des_Galenos_Bd_II",
+      "viewerPath": "wu_Werke_des_Galenos_Bd_II.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wu_Werke_des_Galenos_Bd_III",
+      "viewerPath": "wu_Werke_des_Galenos_Bd_III.php",
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wu_Werke_des_Galenos_Bd_IV",
+      "viewerPath": "wu_Werke_des_Galenos_Bd_IV.php",
+      "fallbackPageCount": 164,
+      "reason": "default-404-and-no-active-mets-link"
+    },
+    {
+      "viewerId": "wu_Werke_des_Galenos_Bd_V",
+      "viewerPath": "wu_Werke_des_Galenos_Bd_V.php",
+      "reason": "default-404-and-no-active-mets-link"
+    }
+  ]
+}

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#172f3b">
+  <meta name="description" content="Search and read the open-access Corpus Medicorum Graecorum catalogue in a modern IIIF viewer.">
+  <title>CMG Reader · Catalogue</title>
+  <link rel="stylesheet" href="./assets/base.css">
+  <link rel="stylesheet" href="./assets/catalogue.css">
+  <script type="module" src="./assets/catalogue.js"></script>
+</head>
+<body class="catalogue-page">
+  <a class="skip-link" href="#results">Skip to results</a>
+
+  <header class="site-header">
+    <a class="wordmark" href="./" aria-label="CMG Reader home">
+      <span class="wordmark-mark" aria-hidden="true">CMG</span>
+      <span class="wordmark-name">Digital catalogue</span>
+    </a>
+    <a class="source-link" href="https://cmg.bbaw.de/epubl/online/editionen.html" rel="external">
+      Original BBAW catalogue <span aria-hidden="true">↗</span>
+    </a>
+  </header>
+
+  <main>
+    <section class="catalogue-hero" aria-labelledby="page-title">
+      <div class="hero-copy">
+        <p class="eyebrow">Corpus Medicorum Graecorum and related series</p>
+        <h1 id="page-title">Read the catalogue,<br>page by page.</h1>
+        <p class="hero-intro">Search editions and translations by author, work, editor, date, series, or language. Each result opens the digitized volume at its exact starting page.</p>
+      </div>
+
+      <form class="search-form" id="search-form" role="search">
+        <label for="catalogue-search">Search the catalogue</label>
+        <div class="search-field">
+          <span class="search-symbol" aria-hidden="true"></span>
+          <input id="catalogue-search" name="q" type="search" autocomplete="off" placeholder="Try Galen, Kühn, 1914, Arabic…">
+          <button class="clear-search" id="clear-search" type="button" hidden>Clear</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="catalogue-workspace" aria-label="Catalogue browser">
+      <details class="filters" id="filters">
+        <summary>
+          <span>Refine results</span>
+          <span class="filter-summary-count" id="active-filter-count">No filters</span>
+        </summary>
+        <div class="filter-content">
+          <div class="filter-heading">
+            <h2>Refine results</h2>
+            <button class="text-button" id="clear-filters" type="button">Clear all</button>
+          </div>
+          <div class="filter-groups" id="filter-groups" aria-live="polite"></div>
+        </div>
+      </details>
+
+      <div class="results-column">
+        <div class="results-heading">
+          <div>
+            <p class="eyebrow">Catalogue</p>
+            <h2 id="results-count">Loading works…</h2>
+          </div>
+          <label class="sort-control" for="sort-results">
+            <span>Sort</span>
+            <select id="sort-results" name="sort">
+              <option value="relevance">Relevance</option>
+              <option value="author">Author</option>
+              <option value="year">Year</option>
+              <option value="series">Series number</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="active-filters" id="active-filters" aria-label="Active filters"></div>
+
+        <div class="loading-results" id="loading-results" role="status" aria-live="polite">
+          <span class="spinner" aria-hidden="true"></span>
+          <span>Loading the catalogue…</span>
+        </div>
+
+        <div class="result-list" id="results" tabindex="-1"></div>
+
+        <section class="empty-state" id="empty-state" hidden>
+          <p class="empty-kicker">No matching works</p>
+          <h2>Try a broader search.</h2>
+          <p>Remove one or more filters, or search for a different author, title, editor, date, or language.</p>
+          <button class="button button-primary" id="reset-search" type="button">Show the full catalogue</button>
+        </section>
+
+        <section class="error-state" id="error-state" role="alert" hidden>
+          <p class="empty-kicker">Catalogue unavailable</p>
+          <h2>We couldn’t load the catalogue data.</h2>
+          <p id="error-message">Check your connection and try again.</p>
+          <button class="button button-primary" id="retry-load" type="button">Try again</button>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>An independent reading interface for the digitized editions hosted by the <a href="https://cmg.bbaw.de/" rel="external">Berlin-Brandenburg Academy of Sciences and Humanities</a>.</p>
+    <p>Catalogue data and page images remain linked to their source.</p>
+  </footer>
+
+  <template id="result-template">
+    <article class="result-card">
+      <div class="result-number" aria-hidden="true"></div>
+      <div class="result-body">
+        <div class="result-topline">
+          <span class="series-pill"></span>
+          <span class="result-year"></span>
+        </div>
+        <h3><a class="result-link"><span class="result-title"></span></a></h3>
+        <p class="result-author"></p>
+        <dl class="result-metadata"></dl>
+      </div>
+      <a class="open-result" aria-label="Open in reader">
+        <span>Open reader</span><span aria-hidden="true">→</span>
+      </a>
+    </article>
+  </template>
+
+  <noscript>
+    <div class="noscript-message">This catalogue needs JavaScript to search and open individual works.</div>
+  </noscript>
+</body>
+</html>

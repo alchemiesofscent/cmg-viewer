@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "scope": "samples",
+  "baseUrl": "https://alchemiesofscent.github.io/cmg-viewer",
+  "volumes": [
+    {
+      "id": "cmg_01_01_02",
+      "collection": "CMG",
+      "seriesNumber": "I 1,2",
+      "authors": ["Hippocrates"],
+      "editors": ["Hans Diller"],
+      "languages": ["Ancient Greek"],
+      "translationLanguages": ["German"],
+      "viewerPath": "cmg_01_01_02.php",
+      "metsPath": "mets/cmg_01_01_02.xml",
+      "imageBasenameTemplate": "CMG_01_01_02_00_{order:04d}",
+      "samplePn": 2,
+      "expected": {
+        "pageCount": 100,
+        "firstOrder": 2,
+        "lastOrder": 101,
+        "sampleCanvasIndex": 0,
+        "sampleLabel": "2"
+      }
+    },
+    {
+      "id": "cmg_03_01",
+      "collection": "CMG",
+      "seriesNumber": "III 1",
+      "authors": ["Rufus of Ephesus"],
+      "editors": ["Alexander Sideras"],
+      "languages": ["Ancient Greek"],
+      "translationLanguages": ["German"],
+      "viewerPath": "cmg_03_01.php",
+      "metsPath": "mets/cmg_03_01.xml",
+      "samplePn": 40,
+      "expected": {
+        "pageCount": 189,
+        "firstOrder": 2,
+        "lastOrder": 190,
+        "sampleCanvasIndex": 38,
+        "sampleLabel": "40"
+      }
+    },
+    {
+      "id": "cmg_05_02_01",
+      "collection": "CMG",
+      "seriesNumber": "V 2,1",
+      "authors": ["Galen"],
+      "editors": ["Diethard Nickel"],
+      "languages": ["Ancient Greek"],
+      "translationLanguages": ["German"],
+      "viewerPath": "cmg_05_02_01.php",
+      "metsPath": "mets/cmg_05_02_01.xml",
+      "samplePn": 12,
+      "expected": {
+        "pageCount": 120,
+        "firstOrder": 2,
+        "lastOrder": 121,
+        "sampleCanvasIndex": 10,
+        "sampleLabel": "12"
+      }
+    },
+    {
+      "id": "wa_dioscurides_mat_med_lib_1_2",
+      "collection": "Weitere Ausgaben",
+      "seriesNumber": "Dioscurides, Mat. med. I-II",
+      "authors": ["Pedanius Dioscorides"],
+      "editors": ["Max Wellmann"],
+      "languages": ["Ancient Greek"],
+      "translationLanguages": [],
+      "viewerPath": "wa_dioscurides_mat_med_lib_1_2.php",
+      "metsPath": "mets/wa_dioscurides_mat_med_lib_1_2.xml",
+      "samplePn": 11,
+      "expected": {
+        "pageCount": 261,
+        "firstOrder": 1,
+        "lastOrder": 261,
+        "sampleCanvasIndex": 10,
+        "sampleLabel": "5"
+      }
+    }
+  ]
+}

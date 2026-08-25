@@ -1,0 +1,23 @@
+{
+  "name": "cmg-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Static catalogue and IIIF viewer for the BBAW CMG/CML digital editions",
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "sync": "node scripts/python.mjs scripts/sync_full.py",
+    "sync:samples": "node scripts/python.mjs scripts/sync.py --scope samples",
+    "build": "node scripts/python.mjs scripts/build.py",
+    "validate": "node scripts/python.mjs scripts/validate.py",
+    "test": "node scripts/python.mjs -m unittest discover -s scripts/tests -v",
+    "serve": "node scripts/python.mjs scripts/serve.py --port 8000"
+  },
+  "dependencies": {
+    "tify": "0.35.0"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=11"
+  }
+}

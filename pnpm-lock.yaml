@@ -1,0 +1,23 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      tify:
+        specifier: 0.35.0
+        version: 0.35.0
+
+packages:
+
+  tify@0.35.0:
+    resolution: {integrity: sha512-fIEtR4XMoqIif+ksLaxWLjZb4yBsYddfKzr/nRnK0QSj455sf6DuYYaFL4YW0ZSZq9Oy8w4N7G7WjRaTcy+eAg==}
+    engines: {node: '>= 20', npm: '>= 9'}
+
+snapshots:
+
+  tify@0.35.0: {}

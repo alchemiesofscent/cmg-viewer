@@ -1,0 +1,22 @@
+# Generated site and caches
+dist/
+.cache/
+node_modules/
+.pnpm-store/
+tmp/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Local tooling
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# The pre-repository prototype is retained locally as a reference only. It
+# contains a large substitute-image payload that must not enter Git history.
+bbaw-cmg-tify-mobile-prototype/
+bbaw-cmg-tify-mobile-prototype.zip
