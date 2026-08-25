@@ -47,6 +47,22 @@ LEADING_SERIES_RE = re.compile(
     re.IGNORECASE,
 )
 
+# BBAW's CMG navigation assigns these divisions to a single author.  X
+# (Medici minores) and XI (Commentaria minora) are deliberately absent because
+# they collect multiple authors.  This can supply an author only when the work
+# has no stronger explicit or uncertain attribution.
+CMG_DIVISION_AUTHORS = {
+    "I": ("Hippocrates", "I Hippocrates"),
+    "II": ("Aretaeus", "II Aretaeus"),
+    "III": ("Rufus of Ephesus", "III Rufus"),
+    "IV": ("Soranus", "IV Soranus"),
+    "V": ("Galen", "V Galenus"),
+    "VI": ("Oribasius", "VI Oribasius"),
+    "VIII": ("Aëtius of Amida", "VIII Aëtius"),
+    "IX": ("Paul of Aegina", "IX Paulus Aegineta"),
+}
+CMG_DIVISION_RE = re.compile(r"^(?:CMG\s*)?(?P<division>[IVXLCDM]+)(?:\s|$)", re.IGNORECASE)
+
 
 # Ordered from the most specific attribution to the broadest canonical form.
 # These expressions are applied only at the beginning of a citation, after an
@@ -93,15 +109,18 @@ AUTHOR_ALIASES: tuple[tuple[re.Pattern[str], str], ...] = tuple(
     )
 )
 
-# The two cached Opera records explicitly qualify the Hippocratic attribution.
-# A plain ``authors: Hippocrates`` would erase that uncertainty, while calling
-# the entire collected volume pseudo-Hippocratic would overstate it.  Leave the
-# author facet blank until a reviewed work-level attribution exists.
+# Qualifiers such as brackets, ``spurium``, and subject-only ``De ... libro``
+# forms must outrank a division default.  A plain author value would erase that
+# uncertainty, while a pseudo-author value could overstate it.  Leave these
+# facets blank until a reviewed work-level attribution exists.
 UNCERTAIN_AUTHOR_FORMS: tuple[re.Pattern[str], ...] = (
     re.compile(
         r"^Hippocratis\s+Opera\s+quae\s+feruntur\s+omnia\b",
         re.IGNORECASE,
     ),
+    re.compile(r"^\[[^\]]+\]", re.IGNORECASE),
+    re.compile(r"^De\s+(?:Galeni|Hippocratis)\s+libro\b", re.IGNORECASE),
+    re.compile(r"^.*\bspurium\b", re.IGNORECASE),
 )
 
 
@@ -471,6 +490,48 @@ def strip_leading_series(text: str, collection: str) -> str:
     return LEADING_SERIES_RE.sub("", text, count=1)
 
 
+def reviewed_cmg_division_author(
+    work: dict[str, Any],
+) -> tuple[list[str], list[dict[str, Any]]]:
+    if compact_space(work.get("collection")) != "CMG":
+        return [], []
+    evidence: list[tuple[str, str]] = []
+    for value in unique_strings(
+        [work.get("seriesNumber", ""), *work.get("seriesNumbers", [])]
+    ):
+        evidence.append((value, "seriesNumber"))
+    for value in unique_strings(work.get("hints", {}).get("seriesNumbers", [])):
+        evidence.append((value, "hints.seriesNumbers"))
+    for field, citation in citation_sources(work):
+        evidence.append((citation, field))
+
+    matches: list[tuple[str, str, str]] = []
+    for value, field in evidence:
+        match = CMG_DIVISION_RE.match(compact_space(value))
+        if not match:
+            continue
+        division = match.group("division").upper()
+        matches.append((division, value, field))
+    divisions = unique_strings(division for division, _value, _field in matches)
+    if len(divisions) != 1:
+        return [], []
+    division = divisions[0]
+    reviewed_author = CMG_DIVISION_AUTHORS.get(division)
+    if reviewed_author is None:
+        return [], []
+    author, heading = reviewed_author
+    _matched_division, _value, field = next(item for item in matches if item[0] == division)
+    return [author], [
+        provenance(
+            author,
+            source="bbaw-cmg-division-heading",
+            evidence=heading,
+            evidence_field=field,
+            rule="reviewed-single-author-cmg-division",
+        )
+    ]
+
+
 def extract_authors(work: dict[str, Any]) -> tuple[list[str], list[dict[str, Any]]]:
     collection = compact_space(work.get("collection"))
     candidates: list[tuple[str, dict[str, Any]]] = []
@@ -497,8 +558,10 @@ def extract_authors(work: dict[str, Any]) -> tuple[list[str], list[dict[str, Any
                 )
                 break
     canonical_values = unique_strings(value for value, _record in candidates)
-    if uncertain or len(canonical_values) != 1:
+    if uncertain or len(canonical_values) > 1:
         return [], []
+    if not canonical_values:
+        return reviewed_cmg_division_author(work)
     canonical = canonical_values[0]
     record = next(record for value, record in candidates if value == canonical)
     return [canonical], [record]
@@ -720,6 +783,19 @@ def enrich_works(
                         evidence_ids=series_evidence_ids,
                     )
                 ]
+
+            for work in siblings:
+                if work.get("authors"):
+                    continue
+                authors, author_records = extract_authors(work)
+                if not authors:
+                    continue
+                for record in author_records:
+                    if record.get("source") == "bbaw-cmg-division-heading":
+                        record["evidenceField"] = "volumeId"
+                        record["evidenceIds"] = list(series_evidence_ids)
+                work["authors"] = authors
+                work["metadataProvenance"]["authors"] = author_records
 
         if len(year_values) == 1:
             consensus = year_values[0]

@@ -18,28 +18,42 @@
       <span class="wordmark-mark" aria-hidden="true">CMG</span>
       <span class="wordmark-name">Digital catalogue</span>
     </a>
-    <a class="source-link" href="https://cmg.bbaw.de/epubl/online/editionen.html" rel="external">
-      Original BBAW catalogue <span aria-hidden="true">↗</span>
-    </a>
+
+    <form class="search-form" id="search-form" role="search">
+      <label class="sr-only" for="catalogue-search">Search the catalogue</label>
+      <div class="search-field">
+        <span class="search-symbol" aria-hidden="true"></span>
+        <input id="catalogue-search" name="q" type="search" autocomplete="off" placeholder="Search works, authors, editors…">
+        <button class="clear-search" id="clear-search" type="button" hidden>Clear</button>
+      </div>
+    </form>
+
+    <nav class="site-nav" aria-label="Catalogue navigation">
+      <button class="authors-menu-toggle" id="authors-menu-toggle" type="button" aria-expanded="false" aria-controls="authors-menu" disabled>
+        <span class="menu-icon" aria-hidden="true">☰</span><span>Authors</span>
+      </button>
+      <a class="source-link" href="https://cmg.bbaw.de/epubl/online/editionen.html" rel="external">
+        BBAW <span aria-hidden="true">↗</span>
+      </a>
+    </nav>
   </header>
 
-  <main>
-    <section class="catalogue-hero" aria-labelledby="page-title">
-      <div class="hero-copy">
-        <p class="eyebrow">Corpus Medicorum Graecorum and related series</p>
-        <h1 id="page-title">Read the catalogue,<br>page by page.</h1>
-        <p class="hero-intro">Search editions and translations by author, work, editor, date, series, or language. Each result opens the digitized volume at its exact starting page.</p>
+  <div class="authors-menu-backdrop" id="authors-menu-backdrop" hidden></div>
+  <aside class="authors-menu" id="authors-menu" role="dialog" aria-modal="true" aria-labelledby="authors-menu-heading" aria-hidden="true" inert>
+    <header class="authors-menu-header">
+      <div>
+        <p class="eyebrow">Browse the corpus</p>
+        <h2 id="authors-menu-heading">Authors</h2>
       </div>
+      <button class="authors-menu-close" id="authors-menu-close" type="button" aria-label="Close authors menu">×</button>
+    </header>
+    <nav class="authors-menu-list" aria-label="Browse works by author">
+      <ol id="authors-menu-list"></ol>
+    </nav>
+  </aside>
 
-      <form class="search-form" id="search-form" role="search">
-        <label for="catalogue-search">Search the catalogue</label>
-        <div class="search-field">
-          <span class="search-symbol" aria-hidden="true"></span>
-          <input id="catalogue-search" name="q" type="search" autocomplete="off" placeholder="Try Galen, Kühn, 1914, Arabic…">
-          <button class="clear-search" id="clear-search" type="button" hidden>Clear</button>
-        </div>
-      </form>
-    </section>
+  <main>
+    <h1 class="sr-only" id="page-title">CMG digital catalogue</h1>
 
     <section class="catalogue-workspace" aria-label="Catalogue browser">
       <details class="filters" id="filters">
@@ -59,16 +73,16 @@
       <div class="results-column">
         <div class="results-heading">
           <div>
-            <p class="eyebrow">Catalogue</p>
+            <p class="eyebrow">Works by series</p>
             <h2 id="results-count">Loading works…</h2>
           </div>
           <label class="sort-control" for="sort-results">
             <span>Sort</span>
             <select id="sort-results" name="sort">
+              <option value="series">CMG / series number</option>
               <option value="relevance">Relevance</option>
               <option value="author">Author</option>
               <option value="year">Year</option>
-              <option value="series">Series number</option>
             </select>
           </label>
         </div>

@@ -182,6 +182,32 @@ class ExplicitRoleTests(unittest.TestCase):
 
 
 class AuthorTests(unittest.TestCase):
+    def test_reviewed_cmg_division_supplies_missing_single_author(self) -> None:
+        value = metadata.extract_work_metadata(
+            work_fixture(
+                "Adversus Iulianum, edidit E. Wenkebach, Berlin 1951",
+                series=["V 10,3"],
+            )
+        )
+        self.assertEqual(value["authors"], ["Galen"])
+        record = value["metadataProvenance"]["authors"][0]
+        self.assertEqual(record["source"], "bbaw-cmg-division-heading")
+        self.assertEqual(record["evidence"], "V Galenus")
+
+    def test_mixed_or_uncertain_cmg_divisions_do_not_supply_an_author(self) -> None:
+        miscellany = metadata.extract_work_metadata(
+            work_fixture("A medical miscellany", series=["X 1"])
+        )
+        mixed = metadata.extract_work_metadata(
+            work_fixture("Conflicting division evidence", series=["V 1", "X 1"])
+        )
+        uncertain = metadata.extract_work_metadata(
+            work_fixture("[Galeni] Definitiones medicas", series=["V 13,2"])
+        )
+        self.assertEqual(miscellany["authors"], [])
+        self.assertEqual(mixed["authors"], [])
+        self.assertEqual(uncertain["authors"], [])
+
     def test_series_prefixed_controlled_author_form_is_evidence(self) -> None:
         value = metadata.extract_work_metadata(
             work_fixture(
@@ -268,6 +294,7 @@ class VolumeConsensusTests(unittest.TestCase):
         ]
         values = metadata.enrich_works(works)
         self.assertEqual([item["seriesNumber"] for item in values], ["V 4,2"] * 3)
+        self.assertEqual([item["authors"] for item in values], [["Galen"]] * 3)
         self.assertEqual([item["year"] for item in values], ["1923"] * 3)
         self.assertEqual(
             values[0]["metadataProvenance"]["year"][0]["source"],
@@ -276,6 +303,10 @@ class VolumeConsensusTests(unittest.TestCase):
         self.assertEqual(
             values[1]["metadataProvenance"]["seriesNumber"][0]["source"],
             "catalogue-volume-unanimous",
+        )
+        self.assertEqual(
+            values[1]["metadataProvenance"]["authors"][0]["source"],
+            "bbaw-cmg-division-heading",
         )
 
     def test_conflicts_do_not_propagate_and_multi_year_evidence_is_preserved(self) -> None:

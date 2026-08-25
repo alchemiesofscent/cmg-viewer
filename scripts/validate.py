@@ -384,6 +384,24 @@ def validate_artifact(
     ):
         require(path.is_file(), f"Required artifact file is missing: {path}")
 
+    catalogue_route_text = (dist / "index.html").read_text(encoding="utf-8")
+    header_start = catalogue_route_text.find('<header class="site-header">')
+    header_end = catalogue_route_text.find("</header>", header_start)
+    search_position = catalogue_route_text.find('id="search-form"')
+    require(
+        header_start >= 0 and header_start < search_position < header_end,
+        "Catalogue search is not in the site header",
+    )
+    require(
+        'id="authors-menu-toggle"' in catalogue_route_text
+        and 'id="authors-menu"' in catalogue_route_text,
+        "Catalogue has no author browse menu",
+    )
+    require(
+        "catalogue-hero" not in catalogue_route_text,
+        "Obsolete catalogue hero is still present",
+    )
+
     files = [path for path in dist.rglob("*") if path.is_file()]
     total_bytes = sum(path.stat().st_size for path in files)
     require(total_bytes <= max_bytes, f"Artifact is too large: {total_bytes} bytes (limit {max_bytes})")

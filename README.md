@@ -8,6 +8,11 @@ The application keeps its searchable catalogue, IIIF Presentation manifests,
 and viewer routes on GitHub Pages. Page images remain on BBAW's HTTPS IIIF
 Image API, so the repository does not duplicate the scan collection.
 
+The catalogue search lives in the site header. Results are grouped by their
+top-level Roman series division while retaining the complete bibliographic
+shelfmark on each work, and the author menu connects reviewed CMG divisions
+with the broader indexed-author list.
+
 The reader provides logical contents, stable page-image URLs, single and
 facing-page layouts, full-resolution zoom, and a keyboard-accessible thumbnail
 rail that loads only nearby previews. A single toolbar owns navigation and
