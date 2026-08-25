@@ -150,7 +150,7 @@ def _download(
     *,
     max_bytes: int,
     timeout: float = 40.0,
-    attempts: int = 4,
+    attempts: int = 2,
 ) -> bytes:
     _require_https_url(url)
     if attempts < 1 or attempts > 8:
@@ -162,7 +162,7 @@ def _download(
             "Accept": "application/json, text/html;q=0.9, */*;q=0.5",
         },
     )
-    retryable_statuses = {408, 425, 429, 500, 502, 503, 504}
+    retryable_statuses = {500, 502, 503, 504}
     payload: bytes | None = None
     last_error: FetchError | None = None
     for attempt in range(1, attempts + 1):
@@ -184,9 +184,7 @@ def _download(
             if exc.code not in retryable_statuses or attempt == attempts:
                 raise last_error from exc
         except (OSError, urllib.error.URLError) as exc:
-            last_error = FetchError(f"Unable to fetch {url}: {exc}")
-            if attempt == attempts:
-                raise last_error from exc
+            raise FetchError(f"Unable to fetch {url}: {exc}") from exc
         except FetchError as exc:
             last_error = exc
             if exc.status not in retryable_statuses or attempt == attempts:
@@ -194,8 +192,8 @@ def _download(
 
         # Stable per-URL jitter prevents concurrent page retries from hitting
         # the Digilib service in lockstep after a brief 5xx response.
-        jitter = int(hashlib.sha1(url.encode("utf-8")).hexdigest()[:2], 16) / 512
-        time.sleep((0.75 * (2 ** (attempt - 1))) + jitter)
+        jitter = int(hashlib.sha1(url.encode("utf-8")).hexdigest()[:2], 16) / 1024
+        time.sleep(0.5 + jitter)
 
     if payload is None:
         raise last_error or FetchError(f"Unable to fetch {url}")

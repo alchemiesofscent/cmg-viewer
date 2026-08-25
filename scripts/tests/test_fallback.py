@@ -128,18 +128,27 @@ class _Response:
 
 
 class DownloadRetryTests(unittest.TestCase):
-    def test_retries_transient_502_then_returns_bounded_payload(self) -> None:
+    def test_retries_transient_502_and_writes_the_valid_cache(self) -> None:
         url = f"{service('fallback_test_0001')}/info.json"
         transient = urllib.error.HTTPError(url, 502, "Bad Gateway", {}, None)
-        with (
-            mock.patch.object(
-                fallback.urllib.request,
-                "urlopen",
-                side_effect=[transient, _Response(url, b"{}")],
-            ) as opener,
-            mock.patch.object(fallback.time, "sleep") as sleeper,
-        ):
-            payload = fallback._download(url, max_bytes=64, attempts=3)
+        with tempfile.TemporaryDirectory() as directory:
+            with (
+                mock.patch.object(
+                    fallback.urllib.request,
+                    "urlopen",
+                    side_effect=[transient, _Response(url, b"{}")],
+                ) as opener,
+                mock.patch.object(fallback.time, "sleep") as sleeper,
+            ):
+                cache = Path(directory) / "info.json"
+                payload = fallback.fetch_cached(
+                    url,
+                    cache,
+                    offline=False,
+                    refresh=True,
+                    max_bytes=64,
+                )
+                self.assertEqual(cache.read_bytes(), b"{}")
         self.assertEqual(payload, b"{}")
         self.assertEqual(opener.call_count, 2)
         sleeper.assert_called_once()
@@ -154,28 +163,75 @@ class DownloadRetryTests(unittest.TestCase):
             mock.patch.object(fallback.time, "sleep") as sleeper,
             self.assertRaises(fallback.FetchError) as raised,
         ):
-            fallback._download(url, max_bytes=64, attempts=4)
+            fallback._download(url, max_bytes=64)
         self.assertEqual(raised.exception.status, 404)
         self.assertEqual(opener.call_count, 1)
         sleeper.assert_not_called()
 
-    def test_persistent_502_fails_closed_after_the_attempt_limit(self) -> None:
+    def test_persistent_502_fails_closed_without_writing_cache(self) -> None:
         url = f"{service('fallback_test_0001')}/info.json"
         failures = [
             urllib.error.HTTPError(url, 502, "Bad Gateway", {}, None)
-            for _attempt in range(3)
+            for _attempt in range(2)
         ]
+        with tempfile.TemporaryDirectory() as directory:
+            with (
+                mock.patch.object(
+                    fallback.urllib.request, "urlopen", side_effect=failures
+                ) as opener,
+                mock.patch.object(fallback.time, "sleep") as sleeper,
+                self.assertRaises(fallback.FallbackError) as raised,
+            ):
+                fallback.enrich_pages(
+                    [{"order": 1, "imageServiceId": service("fallback_test_0001")}],
+                    Path(directory),
+                    overhead=0,
+                    offline=False,
+                    refresh=True,
+                    workers=1,
+                )
+            self.assertFalse((Path(directory) / "000001.json").exists())
+        self.assertIn("ORDER 1", str(raised.exception))
+        self.assertIn("HTTP 502", str(raised.exception))
+        self.assertEqual(opener.call_count, 2)
+        sleeper.assert_called_once()
+
+    def test_network_error_is_not_retried(self) -> None:
+        url = f"{service('fallback_test_0001')}/info.json"
         with (
             mock.patch.object(
-                fallback.urllib.request, "urlopen", side_effect=failures
+                fallback.urllib.request,
+                "urlopen",
+                side_effect=urllib.error.URLError("timed out"),
             ) as opener,
             mock.patch.object(fallback.time, "sleep") as sleeper,
-            self.assertRaises(fallback.FetchError) as raised,
+            self.assertRaises(fallback.FetchError),
         ):
-            fallback._download(url, max_bytes=64, attempts=3)
-        self.assertEqual(raised.exception.status, 502)
-        self.assertEqual(opener.call_count, 3)
-        self.assertEqual(sleeper.call_count, 2)
+            fallback._download(url, max_bytes=64)
+        self.assertEqual(opener.call_count, 1)
+        sleeper.assert_not_called()
+
+    def test_malformed_info_is_not_retried(self) -> None:
+        service_id = service("fallback_test_0001")
+        url = f"{service_id}/info.json"
+        with tempfile.TemporaryDirectory() as directory:
+            with (
+                mock.patch.object(
+                    fallback.urllib.request,
+                    "urlopen",
+                    return_value=_Response(url, b"{}"),
+                ) as opener,
+                mock.patch.object(fallback.time, "sleep") as sleeper,
+                self.assertRaisesRegex(fallback.FallbackError, "invalid dimensions"),
+            ):
+                fallback.fetch_info(
+                    service_id,
+                    Path(directory) / "info.json",
+                    offline=False,
+                    refresh=True,
+                )
+        self.assertEqual(opener.call_count, 1)
+        sleeper.assert_not_called()
 
 
 class HTMLParsingTests(unittest.TestCase):
