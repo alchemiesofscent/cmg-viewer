@@ -271,35 +271,11 @@
   display: grid;
   min-width: 0;
   min-height: 7.5rem;
-  grid-template-columns: 4.75rem minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   border-top: 1px solid #4d5b60;
   color: #eef3f3;
   background: #17262d;
   box-shadow: 0 -4px 14px rgb(0 0 0 / 18%);
-}
-
-.thumbnail-summary {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  justify-content: center;
-  padding: 0.7rem;
-  border-right: 1px solid rgb(255 255 255 / 12%);
-  color: #b9c7ca;
-  font-size: 0.64rem;
-  line-height: 1.2;
-}
-
-.thumbnail-summary strong {
-  color: white;
-  font-family: var(--serif);
-  font-size: 0.95rem;
-  font-weight: 500;
-}
-
-.thumbnail-summary span {
-  margin-top: 0.18rem;
-  font-variant-numeric: tabular-nums;
 }
 
 .thumbnail-scroller {
@@ -310,11 +286,12 @@
   overscroll-behavior-inline: contain;
   scroll-padding-inline: 1rem;
   scrollbar-color: #75858a #17262d;
-  scrollbar-width: thin;
+  scrollbar-width: auto;
+  touch-action: pan-x;
 }
 
 .thumbnail-scroller::-webkit-scrollbar {
-  height: 0.5rem;
+  height: 0.8rem;
 }
 
 .thumbnail-scroller::-webkit-scrollbar-track {
@@ -322,8 +299,10 @@
 }
 
 .thumbnail-scroller::-webkit-scrollbar-thumb {
+  border: 2px solid #17262d;
   border-radius: 1rem;
   background: #75858a;
+  background-clip: padding-box;
 }
 
 .thumbnail-list {
@@ -453,6 +432,21 @@
 
 .fallback-pages[data-direction="right-to-left"] {
   flex-direction: row-reverse;
+}
+
+.fallback-pages[data-spread-side] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fallback-pages[data-spread-side="verso"] .scan-frame,
+.fallback-pages[data-direction="right-to-left"][data-spread-side="recto"] .scan-frame {
+  grid-column: 1;
+}
+
+.fallback-pages[data-spread-side="recto"] .scan-frame,
+.fallback-pages[data-direction="right-to-left"][data-spread-side="verso"] .scan-frame {
+  grid-column: 2;
 }
 
 .scan-frame {
@@ -866,11 +860,6 @@
 
   .thumbnail-strip {
     min-height: 6.15rem;
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .thumbnail-summary {
-    display: none;
   }
 
   .thumbnail-scroller {

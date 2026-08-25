@@ -64,7 +64,6 @@ const elements = {
   thumbnailStrip: document.querySelector('#thumbnail-strip'),
   thumbnailScroller: document.querySelector('#thumbnail-scroller'),
   thumbnailList: document.querySelector('#thumbnail-list'),
-  thumbnailCount: document.querySelector('#thumbnail-count'),
   live: document.querySelector('#reader-live'),
 };
 
@@ -135,23 +134,22 @@ function sourcePageLabel(page) {
 
 function pageDisplay(page, index) {
   const label = sourcePageLabel(page);
-  if (!label) return `Image ${index + 1}`;
+  if (!label) return `Page ${integerValue(page?.order) ?? index + 1}`;
   return /^(?:Abb\.|Tafel)\s/i.test(label) ? label : `Page ${label}`;
+}
+
+function pageInputValue(page, index) {
+  return sourcePageLabel(page) || String(integerValue(page?.order) ?? index + 1);
 }
 
 function pageStatusText(indices) {
   if (!indices.length) return '—';
-  const first = indices[0] + 1;
-  const last = indices.at(-1) + 1;
-  const total = state.pages.length;
-  if (indices.length === 1) {
-    const label = sourcePageLabel(state.pages[indices[0]]);
-    return label ? `${pageDisplay(state.pages[indices[0]], indices[0])} · image ${first} of ${total}` : `Image ${first} of ${total}`;
+  const pages = indices.map((index) => pageDisplay(state.pages[index], index));
+  if (pages.length === 1) return pages[0];
+  if (pages.every((page) => page.startsWith('Page '))) {
+    return `Pages ${pages.map((page) => page.slice(5)).join('–')}`;
   }
-  const labels = indices.map((index) => sourcePageLabel(state.pages[index]));
-  if (!labels.some(Boolean)) return `Images ${first}–${last} of ${total}`;
-  const pages = indices.map((index, offset) => labels[offset] ? pageDisplay(state.pages[index], index) : `image ${index + 1}`);
-  return `${pages.join(' + ')} · images ${first}–${last} of ${total}`;
+  return pages.join(' + ');
 }
 
 function announce(message) {
@@ -495,7 +493,7 @@ function renderToc() {
   if (!state.toc.length) {
     const message = document.createElement('p');
     message.className = 'contents-empty';
-    message.textContent = 'No logical contents are available for this volume yet. Use the page-image field or arrow buttons to move through the volume.';
+    message.textContent = 'No logical contents are available for this volume yet. Use the page field or arrow buttons to move through the volume.';
     elements.contents.replaceChildren(message);
     elements.contentsProvenance.hidden = true;
     return;
@@ -519,10 +517,65 @@ function updateActiveToc() {
   active?.control.setAttribute('aria-current', 'location');
 }
 
+function canvasIsNonPaged(index) {
+  return arrayValue(state.manifest?.items?.[index]?.behavior).includes('non-paged');
+}
+
+function romanPageNumber(value) {
+  const roman = textValue(value).toUpperCase();
+  if (!/^[IVXLCDM]+$/.test(roman)) return null;
+  const values = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+  let total = 0;
+  for (let index = 0; index < roman.length; index += 1) {
+    const current = values[roman[index]];
+    const next = values[roman[index + 1]] || 0;
+    total += current < next ? -current : current;
+  }
+  return total || null;
+}
+
+function printedPageNumber(index) {
+  const label = sourcePageLabel(state.pages[index]);
+  if (/^\d+$/.test(label)) return Number.parseInt(label, 10);
+  return romanPageNumber(label);
+}
+
+function pageSide(index) {
+  if (!state.pages[index] || canvasIsNonPaged(index)) return 'neutral';
+  const printed = printedPageNumber(index);
+  if (printed != null) return printed % 2 === 1 ? 'recto' : 'verso';
+
+  // Treat an unlabelled opening canvas as a recto even when the source starts
+  // its physical ORDER numbering at 2.  Afterwards, source order is a much
+  // better side signal than TIFY's zero-based canvas sequence.
+  if (index === 0 && !sourcePageLabel(state.pages[index])) return 'recto';
+  const order = integerValue(state.pages[index]?.order);
+  if (order != null) return order % 2 === 1 ? 'recto' : 'verso';
+
+  const precedingNonPaged = state.pages
+    .slice(0, index)
+    .filter((_item, precedingIndex) => canvasIsNonPaged(precedingIndex)).length;
+  return ((index + 1 + precedingNonPaged) % 2) === 1 ? 'recto' : 'verso';
+}
+
+function spreadPageNumbers(index = state.index) {
+  if (!state.pages[index]) return [];
+  const page = index + 1;
+  if (state.mode === 'single') return [page];
+  const side = pageSide(index);
+  if (side === 'neutral') return [-1, page];
+
+  const facingIndex = side === 'recto' ? index - 1 : index + 1;
+  if (!state.pages[facingIndex]) return [0, page];
+  const facingSide = pageSide(facingIndex);
+  if (facingSide === 'neutral' || facingSide === side) return [-1, page];
+  return [page, facingIndex + 1].sort((left, right) => left - right);
+}
+
 function currentSpreadIndices() {
-  if (!state.pages.length) return [];
-  if (state.mode === 'single' || state.index >= state.pages.length - 1) return [state.index];
-  return [state.index, state.index + 1];
+  return spreadPageNumbers()
+    .filter((page) => page > 0)
+    .map((page) => page - 1);
 }
 
 function displayedPageIndices() {
@@ -633,8 +686,8 @@ function renderThumbnailRail() {
     button.tabIndex = -1;
     const printedLabel = sourcePageLabel(page);
     const label = printedLabel
-      ? `Open ${pageDisplay(page, index)}; image ${index + 1} of ${state.pages.length}`
-      : `Open image ${index + 1} of ${state.pages.length}`;
+      ? `Open ${pageDisplay(page, index)}; position ${index + 1} of ${state.pages.length}`
+      : `Open page ${index + 1} of ${state.pages.length}`;
     button.setAttribute('aria-label', label);
 
     const frame = document.createElement('span');
@@ -671,7 +724,6 @@ function renderThumbnailRail() {
   });
 
   elements.thumbnailList.replaceChildren(fragment);
-  elements.thumbnailCount.textContent = `${state.pages.length.toLocaleString()} total`;
   observeThumbnailImages();
   updateThumbnailRail({ center: false });
 }
@@ -712,6 +764,7 @@ function updateSourceHref() {
 
 function renderFallback() {
   const indices = currentSpreadIndices();
+  const spreadPages = spreadPageNumbers();
   const fragment = document.createDocumentFragment();
 
   for (const index of indices) {
@@ -722,8 +775,8 @@ function renderFallback() {
     const image = document.createElement('img');
     image.src = page.image;
     image.alt = printedLabel
-      ? `${pageDisplay(page, index)}, image ${index + 1} of ${state.pages.length}`
-      : `Page image ${index + 1} of ${state.pages.length}`;
+      ? `${pageDisplay(page, index)}, position ${index + 1} of ${state.pages.length}`
+      : `Page ${index + 1} of ${state.pages.length}`;
     image.decoding = 'async';
     image.draggable = false;
     if (page.width) image.width = page.width;
@@ -740,6 +793,10 @@ function renderFallback() {
 
   elements.fallbackPages.replaceChildren(fragment);
   elements.fallbackPages.dataset.direction = textValue(state.volume.viewingDirection || state.volume.viewing_direction) || 'left-to-right';
+  delete elements.fallbackPages.dataset.spreadSide;
+  if (state.mode === 'spread' && indices.length === 1 && spreadPages.includes(0)) {
+    elements.fallbackPages.dataset.spreadSide = pageSide(state.index);
+  }
   applyFallbackZoom();
 }
 
@@ -776,9 +833,9 @@ function updatePageUi() {
   const page = state.pages[state.index];
   if (!page) return;
   const visibleIndices = currentSpreadIndices();
-  elements.orderInput.value = String(state.index + 1);
-  elements.orderInput.min = '1';
-  elements.orderInput.max = String(state.pages.length);
+  elements.orderInput.value = pageInputValue(page, state.index);
+  elements.orderInput.removeAttribute('min');
+  elements.orderInput.removeAttribute('max');
   elements.orderInput.setCustomValidity('');
   elements.previous.disabled = state.index <= 0;
   elements.next.disabled = state.index >= state.pages.length - 1;
@@ -794,9 +851,10 @@ function updatePageUi() {
 
 function syncTifyPages() {
   if (!state.tify) return;
-  const pages = currentSpreadIndices().map((pageIndex) => pageIndex + 1);
-  state.tify.toggleDoublePage?.(state.mode === 'spread');
-  state.tify.setPage(pages);
+  if (state.mode === 'single') {
+    state.tify.toggleDoublePage?.(false);
+  }
+  state.tify.setPage(spreadPageNumbers());
 }
 
 function setCurrentIndex(index, { updateViewer = true, speak = true } = {}) {
@@ -824,7 +882,7 @@ function firstIndexFromQuery() {
     return defaultOrder != null && state.orderIndex.has(defaultOrder) ? state.orderIndex.get(defaultOrder) : 0;
   }
   if (state.orderIndex.has(requested)) return state.orderIndex.get(requested);
-  window.setTimeout(() => announce(`The linked page is not present in this volume. Opened image 1 instead.`), 100);
+  window.setTimeout(() => announce(`The linked page is not present in this volume. Opened page 1 instead.`), 100);
   return 0;
 }
 
@@ -868,7 +926,7 @@ async function loadTifyAssets() {
 async function startTify() {
   if (!state.manifest || new URLSearchParams(window.location.search).get('fallback') === '1') throw new Error('Basic reader requested.');
   const Tify = await Promise.race([loadTifyAssets(), timeout(8000, 'TIFY assets timed out.')]);
-  const pages = currentSpreadIndices().map((index) => index + 1);
+  const pages = spreadPageNumbers();
   const viewer = new Tify({
     container: '#tify',
     manifestUrl: MANIFEST_URL.href,
@@ -897,7 +955,8 @@ async function startTify() {
     const displayed = rawPages.filter((page) => page > 0);
     if (!displayed.length) return;
     const signature = rawPages.join(',');
-    const observedIndex = displayed[0] - 1;
+    const displayedIndices = displayed.map((page) => page - 1);
+    const observedIndex = displayedIndices.includes(state.index) ? state.index : displayedIndices[0];
     const observedMode = rawPages.length > 1 ? 'spread' : 'single';
     let observedView = textValue(state.tify?.options?.view);
     if (observedView && !['info', 'export'].includes(observedView)) {
@@ -1074,24 +1133,44 @@ elements.spread.addEventListener('click', () => setMode('spread'));
 elements.zoomOut.addEventListener('click', () => changeZoom(0.75));
 elements.zoomIn.addEventListener('click', () => changeZoom(1.333));
 elements.resetZoom.addEventListener('click', resetZoom);
-function goToImageFromField() {
-  const imageNumber = integerValue(elements.orderInput.value);
-  if (imageNumber == null || !state.pages[imageNumber - 1]) {
-    elements.orderInput.setCustomValidity(`Enter an image number from 1 to ${state.pages.length}.`);
+function goToPageFromField() {
+  const requested = textValue(elements.orderInput.value);
+  const folded = requested.toLocaleLowerCase();
+  const labelMatches = state.pages
+    .map((page, index) => ({ index, label: sourcePageLabel(page).toLocaleLowerCase() }))
+    .filter((entry) => entry.label && entry.label === folded)
+    .map((entry) => entry.index);
+  let targetIndex = null;
+  if (labelMatches.includes(state.index)) {
+    targetIndex = state.index;
+  } else if (labelMatches.length) {
+    targetIndex = labelMatches.reduce((nearest, index) => (
+      Math.abs(index - state.index) < Math.abs(nearest - state.index) ? index : nearest
+    ), labelMatches[0]);
+  } else {
+    const pageNumber = integerValue(requested);
+    if (pageNumber != null && state.orderIndex.has(pageNumber)) {
+      targetIndex = state.orderIndex.get(pageNumber);
+    } else if (pageNumber != null && state.pages[pageNumber - 1]) {
+      targetIndex = pageNumber - 1;
+    }
+  }
+  if (targetIndex == null) {
+    elements.orderInput.setCustomValidity('Enter a page number or label available in this volume.');
     elements.orderInput.reportValidity();
     return false;
   }
   elements.orderInput.setCustomValidity('');
-  setCurrentIndex(imageNumber - 1);
+  setCurrentIndex(targetIndex);
   return true;
 }
 elements.jumpForm.addEventListener('submit', (event) => {
   event.preventDefault();
-  if (!goToImageFromField()) return;
+  if (!goToPageFromField()) return;
   elements.orderInput.select();
 });
 elements.orderInput.addEventListener('input', () => elements.orderInput.setCustomValidity(''));
-elements.orderInput.addEventListener('change', goToImageFromField);
+elements.orderInput.addEventListener('change', goToPageFromField);
 elements.contents.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-page-index]');
   if (!button) return;
@@ -1104,6 +1183,17 @@ elements.thumbnailsToggle.addEventListener('click', () => {
 });
 elements.infoToggle.addEventListener('click', () => toggleTifyView('info'));
 elements.exportToggle.addEventListener('click', () => toggleTifyView('export'));
+elements.thumbnailScroller.addEventListener('wheel', (event) => {
+  if (elements.thumbnailScroller.scrollWidth <= elements.thumbnailScroller.clientWidth) return;
+  const rawDelta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+  if (!rawDelta) return;
+  const scale = event.deltaMode === WheelEvent.DOM_DELTA_LINE
+    ? 32
+    : (event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? elements.thumbnailScroller.clientWidth : 1);
+  const previous = elements.thumbnailScroller.scrollLeft;
+  elements.thumbnailScroller.scrollLeft += rawDelta * scale;
+  if (elements.thumbnailScroller.scrollLeft !== previous) event.preventDefault();
+}, { passive: false });
 elements.thumbnailList.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-page-index]');
   if (!button) return;

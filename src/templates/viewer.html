@@ -58,8 +58,8 @@
       <div class="page-controls" aria-label="Page navigation">
         <button class="tool-button square" id="previous-page" type="button" aria-label="Previous page">←</button>
         <form class="page-jump" id="page-jump-form">
-          <label for="page-order">Image</label>
-          <input id="page-order" name="page" type="number" inputmode="numeric" step="1" aria-label="Go to page image number" aria-describedby="page-status">
+          <label for="page-order">Page</label>
+          <input id="page-order" name="page" type="text" autocomplete="off" maxlength="16" aria-label="Go to printed page number or label" aria-describedby="page-status">
         </form>
         <span class="page-status" id="page-status">—</span>
         <button class="tool-button square" id="next-page" type="button" aria-label="Next page">→</button>
@@ -113,10 +113,6 @@
     </main>
 
     <nav class="thumbnail-strip" id="thumbnail-strip" aria-label="Page thumbnails" hidden>
-      <div class="thumbnail-summary" aria-hidden="true">
-        <strong>Pages</strong>
-        <span id="thumbnail-count">—</span>
-      </div>
       <div class="thumbnail-scroller" id="thumbnail-scroller">
         <ol class="thumbnail-list" id="thumbnail-list"></ol>
       </div>

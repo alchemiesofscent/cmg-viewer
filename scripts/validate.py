@@ -202,7 +202,8 @@ def validate_volume(
         f"Viewer route has no thumbnail rail: {route_path}",
     )
     require(
-        '<strong>Pages</strong>' in route_text
+        'aria-label="Page thumbnails"' in route_text
+        and 'thumbnail-summary' not in route_text
         and '<strong>Scans</strong>' not in route_text,
         f"Viewer thumbnail rail is not page-first: {route_path}",
     )

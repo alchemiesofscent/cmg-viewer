@@ -12,7 +12,7 @@ The reader provides logical contents, stable page-image URLs, single and
 facing-page layouts, full-resolution zoom, and a keyboard-accessible thumbnail
 rail that loads only nearby previews. A single toolbar owns navigation and
 viewer actions; source page labels are preferred over physical scan numbers in
-the visible interface.
+the visible interface, with page position used when no distinct label exists.
 
 The reviewed live census currently contains 218 work-level entries mapped to
 143 physical viewers and 37,756 available scans. Of those viewers, 117 use
