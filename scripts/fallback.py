@@ -33,6 +33,7 @@ import posixpath
 import re
 import string
 import tempfile
+import time
 from typing import Any, Callable, Iterable
 import urllib.error
 import urllib.parse
@@ -144,8 +145,16 @@ def _atomic_write(path: Path, payload: bytes) -> None:
         raise
 
 
-def _download(url: str, *, max_bytes: int, timeout: float = 40.0) -> bytes:
+def _download(
+    url: str,
+    *,
+    max_bytes: int,
+    timeout: float = 40.0,
+    attempts: int = 4,
+) -> bytes:
     _require_https_url(url)
+    if attempts < 1 or attempts > 8:
+        raise FetchError("Download attempts must be between 1 and 8")
     request = urllib.request.Request(
         url,
         headers={
@@ -153,20 +162,43 @@ def _download(url: str, *, max_bytes: int, timeout: float = 40.0) -> bytes:
             "Accept": "application/json, text/html;q=0.9, */*;q=0.5",
         },
     )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            final_url = response.geturl()
-            _require_https_url(final_url)
-            if response.status != 200:
-                raise FetchError(
-                    f"GET {url} returned HTTP {response.status}",
-                    status=response.status,
-                )
-            payload = response.read(max_bytes + 1)
-    except urllib.error.HTTPError as exc:
-        raise FetchError(f"GET {url} returned HTTP {exc.code}", status=exc.code) from exc
-    except (OSError, urllib.error.URLError) as exc:
-        raise FetchError(f"Unable to fetch {url}: {exc}") from exc
+    retryable_statuses = {408, 425, 429, 500, 502, 503, 504}
+    payload: bytes | None = None
+    last_error: FetchError | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                final_url = response.geturl()
+                _require_https_url(final_url)
+                if response.status != 200:
+                    raise FetchError(
+                        f"GET {url} returned HTTP {response.status}",
+                        status=response.status,
+                    )
+                payload = response.read(max_bytes + 1)
+            break
+        except urllib.error.HTTPError as exc:
+            last_error = FetchError(
+                f"GET {url} returned HTTP {exc.code}", status=exc.code
+            )
+            if exc.code not in retryable_statuses or attempt == attempts:
+                raise last_error from exc
+        except (OSError, urllib.error.URLError) as exc:
+            last_error = FetchError(f"Unable to fetch {url}: {exc}")
+            if attempt == attempts:
+                raise last_error from exc
+        except FetchError as exc:
+            last_error = exc
+            if exc.status not in retryable_statuses or attempt == attempts:
+                raise
+
+        # Stable per-URL jitter prevents concurrent page retries from hitting
+        # the Digilib service in lockstep after a brief 5xx response.
+        jitter = int(hashlib.sha1(url.encode("utf-8")).hexdigest()[:2], 16) / 512
+        time.sleep((0.75 * (2 ** (attempt - 1))) + jitter)
+
+    if payload is None:
+        raise last_error or FetchError(f"Unable to fetch {url}")
     if len(payload) > max_bytes:
         raise FetchError(f"GET {url} exceeded the {max_bytes}-byte response limit")
     return payload

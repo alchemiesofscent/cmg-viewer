@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
+import urllib.error
 import urllib.parse
 
 from scripts import fallback
@@ -104,6 +106,76 @@ def manifester_payload(basenames: list[str], *, host: str = "digilib.bbaw.de") -
             "items": canvases,
         }
     ).encode("utf-8")
+
+
+class _Response:
+    def __init__(self, url: str, payload: bytes) -> None:
+        self.url = url
+        self.payload = payload
+        self.status = 200
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args) -> None:
+        return None
+
+    def geturl(self) -> str:
+        return self.url
+
+    def read(self, _limit: int) -> bytes:
+        return self.payload
+
+
+class DownloadRetryTests(unittest.TestCase):
+    def test_retries_transient_502_then_returns_bounded_payload(self) -> None:
+        url = f"{service('fallback_test_0001')}/info.json"
+        transient = urllib.error.HTTPError(url, 502, "Bad Gateway", {}, None)
+        with (
+            mock.patch.object(
+                fallback.urllib.request,
+                "urlopen",
+                side_effect=[transient, _Response(url, b"{}")],
+            ) as opener,
+            mock.patch.object(fallback.time, "sleep") as sleeper,
+        ):
+            payload = fallback._download(url, max_bytes=64, attempts=3)
+        self.assertEqual(payload, b"{}")
+        self.assertEqual(opener.call_count, 2)
+        sleeper.assert_called_once()
+
+    def test_non_retryable_404_fails_closed_without_sleeping(self) -> None:
+        url = f"{service('fallback_test_0001')}/info.json"
+        missing = urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+        with (
+            mock.patch.object(
+                fallback.urllib.request, "urlopen", side_effect=missing
+            ) as opener,
+            mock.patch.object(fallback.time, "sleep") as sleeper,
+            self.assertRaises(fallback.FetchError) as raised,
+        ):
+            fallback._download(url, max_bytes=64, attempts=4)
+        self.assertEqual(raised.exception.status, 404)
+        self.assertEqual(opener.call_count, 1)
+        sleeper.assert_not_called()
+
+    def test_persistent_502_fails_closed_after_the_attempt_limit(self) -> None:
+        url = f"{service('fallback_test_0001')}/info.json"
+        failures = [
+            urllib.error.HTTPError(url, 502, "Bad Gateway", {}, None)
+            for _attempt in range(3)
+        ]
+        with (
+            mock.patch.object(
+                fallback.urllib.request, "urlopen", side_effect=failures
+            ) as opener,
+            mock.patch.object(fallback.time, "sleep") as sleeper,
+            self.assertRaises(fallback.FetchError) as raised,
+        ):
+            fallback._download(url, max_bytes=64, attempts=3)
+        self.assertEqual(raised.exception.status, 502)
+        self.assertEqual(opener.call_count, 3)
+        self.assertEqual(sleeper.call_count, 2)
 
 
 class HTMLParsingTests(unittest.TestCase):
