@@ -245,6 +245,26 @@
   background: #252e32;
 }
 
+/* The catalogue shell owns the title and core reader controls. TIFY remains the
+   image engine plus the Info/Export panels, without rendering duplicate UI. */
+#tify .tify-header,
+#tify .tify-media-buttons.-pagination {
+  display: none;
+}
+
+#tify .tify-media-buttons.-controls > .tify-media-button[aria-label="Zoom in"],
+#tify .tify-media-buttons.-controls > .tify-media-button[aria-label="Zoom out"],
+#tify .tify-media-buttons.-controls > .tify-media-button[aria-label="Reset"] {
+  display: none;
+}
+
+.info-toggle[aria-pressed="true"],
+.export-toggle[aria-pressed="true"] {
+  border-color: var(--teal);
+  color: white;
+  background: var(--teal);
+}
+
 .thumbnail-strip {
   position: relative;
   z-index: 24;
@@ -759,6 +779,8 @@
 
   .contents-toggle span:last-child,
   .thumbnails-toggle span:last-child,
+  .info-toggle span:last-child,
+  .export-toggle span:last-child,
   .reset-zoom,
   .fullscreen-button {
     display: none;

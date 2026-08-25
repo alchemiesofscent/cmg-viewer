@@ -59,6 +59,8 @@ const elements = {
   contents: document.querySelector('#contents-list'),
   contentsProvenance: document.querySelector('#contents-provenance'),
   thumbnailsToggle: document.querySelector('#thumbnails-toggle'),
+  infoToggle: document.querySelector('#info-toggle'),
+  exportToggle: document.querySelector('#export-toggle'),
   thumbnailStrip: document.querySelector('#thumbnail-strip'),
   thumbnailScroller: document.querySelector('#thumbnail-scroller'),
   thumbnailList: document.querySelector('#thumbnail-list'),
@@ -79,6 +81,7 @@ const state = {
   tify: null,
   tifyTimer: null,
   tifyPageSignature: '',
+  tifyView: '',
   toc: [],
   tocEntries: [],
   thumbnailsOpen: true,
@@ -123,6 +126,32 @@ function integerValue(...values) {
     if (Number.isInteger(number)) return number;
   }
   return null;
+}
+
+function sourcePageLabel(page) {
+  const label = textValue(page?.label);
+  return label && label !== String(page?.order) ? label : '';
+}
+
+function pageDisplay(page, index) {
+  const label = sourcePageLabel(page);
+  if (!label) return `Image ${index + 1}`;
+  return /^(?:Abb\.|Tafel)\s/i.test(label) ? label : `Page ${label}`;
+}
+
+function pageStatusText(indices) {
+  if (!indices.length) return '—';
+  const first = indices[0] + 1;
+  const last = indices.at(-1) + 1;
+  const total = state.pages.length;
+  if (indices.length === 1) {
+    const label = sourcePageLabel(state.pages[indices[0]]);
+    return label ? `${pageDisplay(state.pages[indices[0]], indices[0])} · image ${first} of ${total}` : `Image ${first} of ${total}`;
+  }
+  const labels = indices.map((index) => sourcePageLabel(state.pages[index]));
+  if (!labels.some(Boolean)) return `Images ${first}–${last} of ${total}`;
+  const pages = indices.map((index, offset) => labels[offset] ? pageDisplay(state.pages[index], index) : `image ${index + 1}`);
+  return `${pages.join(' + ')} · images ${first}–${last} of ${total}`;
 }
 
 function announce(message) {
@@ -299,7 +328,7 @@ function applyVolumeIdentity(volume, manifest) {
     years.join('–'),
     editors.length ? `ed. ${editors.join(', ')}` : '',
     contributors.length ? contributors.join(', ') : '',
-    `${state.pages.length.toLocaleString()} scans`,
+    `${state.pages.length.toLocaleString()} pages`,
   ].filter(Boolean);
 
   elements.title.textContent = title;
@@ -454,7 +483,7 @@ function renderToc() {
       }
       const order = document.createElement('span');
       order.className = 'contents-order';
-      order.textContent = node.order == null ? '' : `scan ${node.order}`;
+      order.textContent = node.index == null ? '' : pageDisplay(state.pages[node.index], node.index);
       control.append(label, order);
       item.append(control);
       if (node.children.length) item.append(createList(node.children));
@@ -466,7 +495,7 @@ function renderToc() {
   if (!state.toc.length) {
     const message = document.createElement('p');
     message.className = 'contents-empty';
-    message.textContent = 'No logical contents are available for this volume yet. Use the scan-order field to move through the pages.';
+    message.textContent = 'No logical contents are available for this volume yet. Use the page-image field or arrow buttons to move through the volume.';
     elements.contents.replaceChildren(message);
     elements.contentsProvenance.hidden = true;
     return;
@@ -602,7 +631,10 @@ function renderThumbnailRail() {
     button.className = 'thumbnail-button';
     button.dataset.pageIndex = String(index);
     button.tabIndex = -1;
-    const label = `Open scan order ${page.order}, page label ${page.label}, ${index + 1} of ${state.pages.length}`;
+    const printedLabel = sourcePageLabel(page);
+    const label = printedLabel
+      ? `Open ${pageDisplay(page, index)}; image ${index + 1} of ${state.pages.length}`
+      : `Open image ${index + 1} of ${state.pages.length}`;
     button.setAttribute('aria-label', label);
 
     const frame = document.createElement('span');
@@ -630,14 +662,8 @@ function renderThumbnailRail() {
     const caption = document.createElement('span');
     caption.className = 'thumbnail-caption';
     const order = document.createElement('span');
-    order.textContent = `Scan ${page.order}`;
+    order.textContent = pageDisplay(page, index);
     caption.append(order);
-    if (page.label !== String(page.order)) {
-      const pageLabel = document.createElement('span');
-      pageLabel.className = 'thumbnail-page-label';
-      pageLabel.textContent = `· ${page.label}`;
-      caption.append(pageLabel);
-    }
     button.append(frame, caption);
     item.append(button);
     fragment.append(item);
@@ -690,11 +716,14 @@ function renderFallback() {
 
   for (const index of indices) {
     const page = state.pages[index];
+    const printedLabel = sourcePageLabel(page);
     const frame = document.createElement('figure');
     frame.className = 'scan-frame';
     const image = document.createElement('img');
     image.src = page.image;
-    image.alt = `Scan order ${page.order}, page label ${page.label}`;
+    image.alt = printedLabel
+      ? `${pageDisplay(page, index)}, image ${index + 1} of ${state.pages.length}`
+      : `Page image ${index + 1} of ${state.pages.length}`;
     image.decoding = 'async';
     image.draggable = false;
     if (page.width) image.width = page.width;
@@ -704,7 +733,7 @@ function renderFallback() {
       image.remove();
     }, { once: true });
     const caption = document.createElement('figcaption');
-    caption.textContent = `Scan ${page.order} · ${page.label}`;
+    caption.textContent = pageDisplay(page, index);
     frame.append(image, caption);
     fragment.append(frame);
   }
@@ -720,19 +749,43 @@ function applyFallbackZoom() {
   elements.resetZoom.textContent = state.zoom === 1 ? 'Fit' : `${Math.round(state.zoom * 100)}%`;
 }
 
+function updateTifyViewControls() {
+  const enabled = Boolean(state.tify);
+  const view = enabled ? textValue(state.tify.options?.view) : '';
+  state.tifyView = view;
+  for (const [name, button, label] of [
+    ['info', elements.infoToggle, 'volume information'],
+    ['export', elements.exportToggle, 'export options'],
+  ]) {
+    const active = view === name;
+    button.disabled = !enabled;
+    button.setAttribute('aria-pressed', String(active));
+    button.setAttribute('aria-label', `${active ? 'Hide' : 'Show'} ${label}`);
+  }
+}
+
+function toggleTifyView(name) {
+  if (!state.tify || !['info', 'export'].includes(name)) return;
+  if (elements.drawer.dataset.open === 'true') closeDrawer({ restoreFocus: false });
+  const nextView = textValue(state.tify.options?.view) === name ? null : name;
+  state.tify.setView(nextView);
+  updateTifyViewControls();
+}
+
 function updatePageUi() {
   const page = state.pages[state.index];
   if (!page) return;
-  const visible = currentSpreadIndices().map((index) => state.pages[index]);
-  elements.orderInput.value = String(page.order);
+  const visibleIndices = currentSpreadIndices();
+  elements.orderInput.value = String(state.index + 1);
+  elements.orderInput.min = '1';
+  elements.orderInput.max = String(state.pages.length);
   elements.orderInput.setCustomValidity('');
   elements.previous.disabled = state.index <= 0;
   elements.next.disabled = state.index >= state.pages.length - 1;
   elements.single.setAttribute('aria-pressed', String(state.mode === 'single'));
   elements.spread.setAttribute('aria-pressed', String(state.mode === 'spread'));
-  elements.pageStatus.textContent = visible.length > 1
-    ? `Scans ${visible[0].order}–${visible.at(-1).order} · ${state.index + 1}–${state.index + visible.length} of ${state.pages.length}`
-    : `Scan ${page.order} · ${page.label} · ${state.index + 1} of ${state.pages.length}`;
+  elements.pageStatus.textContent = pageStatusText(visibleIndices);
+  updateTifyViewControls();
   updateAddress();
   updateSourceHref();
   updateActiveToc();
@@ -771,7 +824,7 @@ function firstIndexFromQuery() {
     return defaultOrder != null && state.orderIndex.has(defaultOrder) ? state.orderIndex.get(defaultOrder) : 0;
   }
   if (state.orderIndex.has(requested)) return state.orderIndex.get(requested);
-  window.setTimeout(() => announce(`Scan order ${requested} is not present in this volume. Opened scan ${state.pages[0].order} instead.`), 100);
+  window.setTimeout(() => announce(`The linked page is not present in this volume. Opened image 1 instead.`), 100);
   return 0;
 }
 
@@ -833,6 +886,7 @@ async function startTify() {
   await Promise.race([viewer.ready, timeout(12000, 'TIFY did not become ready.')]);
   state.tify = viewer;
   state.tifyPageSignature = arrayValue(state.tify.options?.pages).map(Number).join(',');
+  state.tifyView = textValue(state.tify.options?.view);
   elements.tify.hidden = false;
   elements.fallback.hidden = true;
   window.__cmgTify = viewer;
@@ -845,8 +899,17 @@ async function startTify() {
     const signature = rawPages.join(',');
     const observedIndex = displayed[0] - 1;
     const observedMode = rawPages.length > 1 ? 'spread' : 'single';
+    let observedView = textValue(state.tify?.options?.view);
+    if (observedView && !['info', 'export'].includes(observedView)) {
+      state.tify.setView(null);
+      observedView = '';
+    }
     let changed = signature !== state.tifyPageSignature;
     state.tifyPageSignature = signature;
+    if (observedView !== state.tifyView) {
+      state.tifyView = observedView;
+      changed = true;
+    }
     if (state.pages[observedIndex] && observedIndex !== state.index) {
       state.index = observedIndex;
       changed = true;
@@ -868,6 +931,7 @@ function showError(error) {
   elements.thumbnailsToggle.disabled = true;
   elements.thumbnailsToggle.setAttribute('aria-expanded', 'false');
   elements.thumbnailsToggle.setAttribute('aria-label', 'Show page thumbnails');
+  updateTifyViewControls();
   elements.error.hidden = false;
   elements.errorMessage.textContent = error?.message || 'The page data may be temporarily unavailable.';
 }
@@ -885,6 +949,7 @@ async function initialize() {
   state.tify?.destroy?.();
   state.tify = null;
   state.tifyPageSignature = '';
+  state.tifyView = '';
   state.thumbnailObserver?.disconnect();
   state.thumbnailObserver = null;
   state.thumbnailEntries = [];
@@ -895,6 +960,7 @@ async function initialize() {
   elements.thumbnailsToggle.disabled = true;
   elements.thumbnailsToggle.setAttribute('aria-expanded', 'false');
   elements.thumbnailsToggle.setAttribute('aria-label', 'Show page thumbnails');
+  updateTifyViewControls();
   elements.error.hidden = true;
   elements.fallback.hidden = true;
   elements.tify.hidden = true;
@@ -980,6 +1046,10 @@ function resetZoom() {
 }
 
 function openDrawer() {
+  if (state.tify && ['info', 'export'].includes(textValue(state.tify.options?.view))) {
+    state.tify.setView(null);
+    updateTifyViewControls();
+  }
   elements.drawer.inert = false;
   elements.drawer.setAttribute('aria-hidden', 'false');
   elements.drawer.dataset.open = 'true';
@@ -1004,19 +1074,24 @@ elements.spread.addEventListener('click', () => setMode('spread'));
 elements.zoomOut.addEventListener('click', () => changeZoom(0.75));
 elements.zoomIn.addEventListener('click', () => changeZoom(1.333));
 elements.resetZoom.addEventListener('click', resetZoom);
-elements.jumpForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const order = integerValue(elements.orderInput.value);
-  if (order == null || !state.orderIndex.has(order)) {
-    elements.orderInput.setCustomValidity('Enter a scan order that exists in this volume.');
+function goToImageFromField() {
+  const imageNumber = integerValue(elements.orderInput.value);
+  if (imageNumber == null || !state.pages[imageNumber - 1]) {
+    elements.orderInput.setCustomValidity(`Enter an image number from 1 to ${state.pages.length}.`);
     elements.orderInput.reportValidity();
-    return;
+    return false;
   }
   elements.orderInput.setCustomValidity('');
-  setCurrentIndex(state.orderIndex.get(order));
+  setCurrentIndex(imageNumber - 1);
+  return true;
+}
+elements.jumpForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  if (!goToImageFromField()) return;
   elements.orderInput.select();
 });
 elements.orderInput.addEventListener('input', () => elements.orderInput.setCustomValidity(''));
+elements.orderInput.addEventListener('change', goToImageFromField);
 elements.contents.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-page-index]');
   if (!button) return;
@@ -1027,6 +1102,8 @@ elements.contents.addEventListener('click', (event) => {
 elements.thumbnailsToggle.addEventListener('click', () => {
   setThumbnailStripOpen(!state.thumbnailsOpen, { smooth: true });
 });
+elements.infoToggle.addEventListener('click', () => toggleTifyView('info'));
+elements.exportToggle.addEventListener('click', () => toggleTifyView('export'));
 elements.thumbnailList.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-page-index]');
   if (!button) return;
@@ -1088,6 +1165,22 @@ document.addEventListener('fullscreenchange', () => {
   const active = Boolean(document.fullscreenElement);
   elements.fullscreen.setAttribute('aria-label', active ? 'Exit full screen' : 'Enter full screen');
 });
+
+elements.tify.addEventListener('keydown', (event) => {
+  if (event.target.closest('input, select, textarea, button, a')) return;
+  const actions = {
+    2: () => setThumbnailStripOpen(!state.thumbnailsOpen, { smooth: true }),
+    3: () => (elements.drawer.dataset.open === 'true' ? closeDrawer() : openDrawer()),
+    b: () => setMode(state.mode === 'spread' ? 'single' : 'spread'),
+    f: () => elements.fullscreen.click(),
+  };
+  const action = actions[event.key];
+  if (action) {
+    event.preventDefault();
+    event.stopPropagation();
+    action();
+  }
+}, { capture: true });
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && elements.drawer.dataset.open === 'true') {

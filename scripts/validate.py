@@ -201,6 +201,16 @@ def validate_volume(
         and 'id="thumbnail-list"' in route_text,
         f"Viewer route has no thumbnail rail: {route_path}",
     )
+    require(
+        '<strong>Pages</strong>' in route_text
+        and '<strong>Scans</strong>' not in route_text,
+        f"Viewer thumbnail rail is not page-first: {route_path}",
+    )
+    require(
+        'id="info-toggle"' in route_text
+        and 'id="export-toggle"' in route_text,
+        f"Viewer route has no unified Info/Export controls: {route_path}",
+    )
 
     volume = read_json(volume_path)
     manifest = read_json(manifest_path)

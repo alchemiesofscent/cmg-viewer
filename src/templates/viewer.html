@@ -26,7 +26,7 @@
       </div>
 
       <nav class="header-actions" aria-label="Volume links">
-        <a class="header-action" id="cmg-source" href="https://cmg.bbaw.de/epubl/online/editionen.html" rel="external noopener" target="_blank" aria-label="View this scan at CMG">
+        <a class="header-action" id="cmg-source" href="https://cmg.bbaw.de/epubl/online/editionen.html" rel="external noopener" target="_blank" aria-label="View this page at CMG">
           <span class="wide-label">View at CMG</span><span aria-hidden="true">↗</span>
         </a>
         <a class="header-action" href="https://github.com/alchemiesofscent/cmg-viewer" rel="external noopener" target="_blank" aria-label="View the CMG Viewer source code">
@@ -47,11 +47,19 @@
         <span aria-hidden="true">▦</span><span>Thumbnails</span>
       </button>
 
+      <button class="tool-button info-toggle" id="info-toggle" type="button" aria-pressed="false" aria-label="Show volume information" disabled>
+        <span aria-hidden="true">ⓘ</span><span>Info</span>
+      </button>
+
+      <button class="tool-button export-toggle" id="export-toggle" type="button" aria-pressed="false" aria-label="Show export options" disabled>
+        <span aria-hidden="true">⇩</span><span>Export</span>
+      </button>
+
       <div class="page-controls" aria-label="Page navigation">
         <button class="tool-button square" id="previous-page" type="button" aria-label="Previous page">←</button>
         <form class="page-jump" id="page-jump-form">
-          <label for="page-order">Scan order</label>
-          <input id="page-order" name="pn" type="number" inputmode="numeric" step="1" aria-describedby="page-status">
+          <label for="page-order">Image</label>
+          <input id="page-order" name="page" type="number" inputmode="numeric" step="1" aria-label="Go to page image number" aria-describedby="page-status">
         </form>
         <span class="page-status" id="page-status">—</span>
         <button class="tool-button square" id="next-page" type="button" aria-label="Next page">→</button>
@@ -106,7 +114,7 @@
 
     <nav class="thumbnail-strip" id="thumbnail-strip" aria-label="Page thumbnails" hidden>
       <div class="thumbnail-summary" aria-hidden="true">
-        <strong>Scans</strong>
+        <strong>Pages</strong>
         <span id="thumbnail-count">—</span>
       </div>
       <div class="thumbnail-scroller" id="thumbnail-scroller">
