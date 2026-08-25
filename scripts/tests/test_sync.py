@@ -254,6 +254,10 @@ class GenerationTests(unittest.TestCase):
         self.assertEqual(volume["orderToCanvasIndex"], {"2": 0, "3": 1, "4": 2, "5": 3})
         self.assertEqual(volume["pages"][1]["label"], "1")
         self.assertIn("pn=3", volume["pages"][1]["sourcePageUrl"])
+        self.assertEqual(
+            volume["pages"][1]["thumbnailUrl"],
+            f"{volume['pages'][1]['imageServiceId']}/full/200,/0/default.jpg",
+        )
 
 
 if __name__ == "__main__":

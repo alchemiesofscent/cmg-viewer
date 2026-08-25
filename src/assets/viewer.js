@@ -58,6 +58,11 @@ const elements = {
   drawerBackdrop: document.querySelector('#drawer-backdrop'),
   contents: document.querySelector('#contents-list'),
   contentsProvenance: document.querySelector('#contents-provenance'),
+  thumbnailsToggle: document.querySelector('#thumbnails-toggle'),
+  thumbnailStrip: document.querySelector('#thumbnail-strip'),
+  thumbnailScroller: document.querySelector('#thumbnail-scroller'),
+  thumbnailList: document.querySelector('#thumbnail-list'),
+  thumbnailCount: document.querySelector('#thumbnail-count'),
   live: document.querySelector('#reader-live'),
 };
 
@@ -73,8 +78,14 @@ const state = {
   zoom: 1,
   tify: null,
   tifyTimer: null,
+  tifyPageSignature: '',
   toc: [],
   tocEntries: [],
+  thumbnailsOpen: true,
+  thumbnailEntries: [],
+  thumbnailObserver: null,
+  thumbnailPrimaryIndex: null,
+  thumbnailVisibleIndices: new Set(),
   sourceUrl: '',
   controller: null,
 };
@@ -157,6 +168,23 @@ function imageUrl(record, canvas) {
   return service ? `${service.replace(/\/$/, '')}/full/full/0/default.jpg` : '';
 }
 
+function thumbnailUrl(record, canvas) {
+  const direct = textValue(
+    record?.thumbnailUrl || record?.thumbnail_url || record?.thumbnail ||
+    record?.previewUrl || record?.preview_url,
+  );
+  if (direct) return direct;
+  const thumbnail = arrayValue(canvas?.thumbnail)[0] || {};
+  const thumbnailId = textValue(thumbnail.id || thumbnail['@id'] || thumbnail.url || thumbnail.href);
+  if (thumbnailId) return thumbnailId;
+  const body = annotationBody(canvas);
+  const service = textValue(
+    record?.imageServiceId || record?.image_service_id || record?.imageService ||
+    record?.image_service || record?.serviceId || record?.service_id,
+  ) || serviceId(body);
+  return service ? `${service.replace(/\/$/, '')}/full/200,/0/default.jpg` : '';
+}
+
 function metadataValue(resource, pattern) {
   const entry = arrayValue(resource?.metadata).find((item) => pattern.test(textValue(item?.label)));
   return textValue(entry?.value);
@@ -220,6 +248,7 @@ function normalizePages(volume, manifest) {
       label,
       canvasId,
       image: imageUrl(record, canvas),
+      thumbnail: thumbnailUrl(record, canvas),
       width: integerValue(record.width, annotationBody(canvas).width, canvas.width),
       height: integerValue(record.height, annotationBody(canvas).height, canvas.height),
     };
@@ -467,6 +496,168 @@ function currentSpreadIndices() {
   return [state.index, state.index + 1];
 }
 
+function displayedPageIndices() {
+  if (state.tify) {
+    const indices = arrayValue(state.tify.options?.pages)
+      .map(Number)
+      .filter((pageNumber) => pageNumber > 0 && state.pages[pageNumber - 1])
+      .map((pageNumber) => pageNumber - 1);
+    if (indices.length) return [...new Set(indices)];
+  }
+  return currentSpreadIndices();
+}
+
+function loadThumbnailImage(image) {
+  const source = image.dataset.src;
+  if (!source) return;
+  image.src = source;
+  image.removeAttribute('data-src');
+}
+
+function observeThumbnailImages() {
+  state.thumbnailObserver?.disconnect();
+  state.thumbnailObserver = null;
+  const images = state.thumbnailEntries.map((entry) => entry?.image).filter(Boolean);
+  if (!('IntersectionObserver' in window)) {
+    images.forEach(loadThumbnailImage);
+    return;
+  }
+  state.thumbnailObserver = new IntersectionObserver((observations) => {
+    for (const observation of observations) {
+      if (!observation.isIntersecting) continue;
+      loadThumbnailImage(observation.target);
+      state.thumbnailObserver?.unobserve(observation.target);
+    }
+  }, {
+    root: elements.thumbnailScroller,
+    rootMargin: '0px 700px',
+    threshold: 0.01,
+  });
+  images.forEach((image) => state.thumbnailObserver.observe(image));
+}
+
+function centerThumbnail(index, { smooth = true } = {}) {
+  if (elements.thumbnailStrip.hidden) return;
+  const entry = state.thumbnailEntries[index];
+  if (!entry) return;
+  window.requestAnimationFrame(() => {
+    if (elements.thumbnailStrip.hidden || state.thumbnailPrimaryIndex !== index) return;
+    const scrollerBounds = elements.thumbnailScroller.getBoundingClientRect();
+    const buttonBounds = entry.button.getBoundingClientRect();
+    const inset = 8;
+    if (buttonBounds.left >= scrollerBounds.left + inset && buttonBounds.right <= scrollerBounds.right - inset) return;
+    const distance = buttonBounds.right < scrollerBounds.left
+      ? scrollerBounds.left - buttonBounds.right
+      : buttonBounds.left - scrollerBounds.right;
+    const nearby = distance <= scrollerBounds.width * 1.5;
+    entry.button.scrollIntoView({
+      behavior: smooth && nearby && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto',
+      block: 'nearest',
+      inline: 'center',
+    });
+  });
+}
+
+function updateThumbnailRail({ center = true, smooth = true } = {}) {
+  if (!state.thumbnailEntries.length || !state.pages[state.index]) return;
+  const visibleIndices = new Set(displayedPageIndices());
+  for (const index of state.thumbnailVisibleIndices) {
+    const entry = state.thumbnailEntries[index];
+    if (!entry) continue;
+    entry.button.removeAttribute('data-visible');
+    entry.button.setAttribute('aria-label', entry.label);
+  }
+  if (state.thumbnailPrimaryIndex != null) {
+    const previous = state.thumbnailEntries[state.thumbnailPrimaryIndex];
+    previous?.button.removeAttribute('aria-current');
+    if (previous) previous.button.tabIndex = -1;
+  }
+
+  state.thumbnailPrimaryIndex = state.index;
+  state.thumbnailVisibleIndices = visibleIndices;
+  for (const index of visibleIndices) {
+    const entry = state.thumbnailEntries[index];
+    if (!entry) continue;
+    entry.button.dataset.visible = 'true';
+    if (index !== state.index) entry.button.setAttribute('aria-label', `${entry.label}; visible in current spread`);
+  }
+  const current = state.thumbnailEntries[state.index];
+  current.button.setAttribute('aria-current', 'page');
+  current.button.tabIndex = 0;
+  if (center) centerThumbnail(state.index, { smooth });
+}
+
+function renderThumbnailRail() {
+  state.thumbnailObserver?.disconnect();
+  state.thumbnailObserver = null;
+  state.thumbnailEntries = [];
+  state.thumbnailPrimaryIndex = null;
+  state.thumbnailVisibleIndices = new Set();
+  const fragment = document.createDocumentFragment();
+
+  state.pages.forEach((page, index) => {
+    const item = document.createElement('li');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'thumbnail-button';
+    button.dataset.pageIndex = String(index);
+    button.tabIndex = -1;
+    const label = `Open scan order ${page.order}, page label ${page.label}, ${index + 1} of ${state.pages.length}`;
+    button.setAttribute('aria-label', label);
+
+    const frame = document.createElement('span');
+    frame.className = 'thumbnail-image-frame';
+    let image = null;
+    if (page.thumbnail) {
+      image = document.createElement('img');
+      image.alt = '';
+      image.loading = 'lazy';
+      image.decoding = 'async';
+      image.fetchPriority = 'low';
+      image.draggable = false;
+      image.width = 200;
+      image.height = page.width && page.height ? Math.round(200 * page.height / page.width) : 280;
+      image.dataset.src = page.thumbnail;
+      image.addEventListener('error', () => {
+        button.dataset.imageFailed = 'true';
+        image.hidden = true;
+      }, { once: true });
+      frame.append(image);
+    } else {
+      button.dataset.imageFailed = 'true';
+    }
+
+    const caption = document.createElement('span');
+    caption.className = 'thumbnail-caption';
+    const order = document.createElement('span');
+    order.textContent = `Scan ${page.order}`;
+    caption.append(order);
+    if (page.label !== String(page.order)) {
+      const pageLabel = document.createElement('span');
+      pageLabel.className = 'thumbnail-page-label';
+      pageLabel.textContent = `· ${page.label}`;
+      caption.append(pageLabel);
+    }
+    button.append(frame, caption);
+    item.append(button);
+    fragment.append(item);
+    state.thumbnailEntries[index] = { button, image, label };
+  });
+
+  elements.thumbnailList.replaceChildren(fragment);
+  elements.thumbnailCount.textContent = `${state.pages.length.toLocaleString()} total`;
+  observeThumbnailImages();
+  updateThumbnailRail({ center: false });
+}
+
+function setThumbnailStripOpen(open, { smooth = false } = {}) {
+  state.thumbnailsOpen = Boolean(open);
+  elements.thumbnailStrip.hidden = !state.thumbnailsOpen;
+  elements.thumbnailsToggle.setAttribute('aria-expanded', String(state.thumbnailsOpen));
+  elements.thumbnailsToggle.setAttribute('aria-label', `${state.thumbnailsOpen ? 'Hide' : 'Show'} page thumbnails`);
+  if (state.thumbnailsOpen) centerThumbnail(state.index, { smooth });
+}
+
 function updateAddress() {
   const page = state.pages[state.index];
   if (!page) return;
@@ -545,6 +736,7 @@ function updatePageUi() {
   updateAddress();
   updateSourceHref();
   updateActiveToc();
+  updateThumbnailRail();
 }
 
 function syncTifyPages() {
@@ -640,17 +832,21 @@ async function startTify() {
   });
   await Promise.race([viewer.ready, timeout(12000, 'TIFY did not become ready.')]);
   state.tify = viewer;
+  state.tifyPageSignature = arrayValue(state.tify.options?.pages).map(Number).join(',');
   elements.tify.hidden = false;
   elements.fallback.hidden = true;
   window.__cmgTify = viewer;
+  updatePageUi();
 
   state.tifyTimer = window.setInterval(() => {
     const rawPages = arrayValue(state.tify?.options?.pages).map(Number);
     const displayed = rawPages.filter((page) => page > 0);
     if (!displayed.length) return;
+    const signature = rawPages.join(',');
     const observedIndex = displayed[0] - 1;
     const observedMode = rawPages.length > 1 ? 'spread' : 'single';
-    let changed = false;
+    let changed = signature !== state.tifyPageSignature;
+    state.tifyPageSignature = signature;
     if (state.pages[observedIndex] && observedIndex !== state.index) {
       state.index = observedIndex;
       changed = true;
@@ -668,6 +864,10 @@ function showError(error) {
   elements.loading.hidden = true;
   elements.fallback.hidden = true;
   elements.tify.hidden = true;
+  elements.thumbnailStrip.hidden = true;
+  elements.thumbnailsToggle.disabled = true;
+  elements.thumbnailsToggle.setAttribute('aria-expanded', 'false');
+  elements.thumbnailsToggle.setAttribute('aria-label', 'Show page thumbnails');
   elements.error.hidden = false;
   elements.errorMessage.textContent = error?.message || 'The page data may be temporarily unavailable.';
 }
@@ -684,6 +884,17 @@ async function initialize() {
   state.tifyTimer = null;
   state.tify?.destroy?.();
   state.tify = null;
+  state.tifyPageSignature = '';
+  state.thumbnailObserver?.disconnect();
+  state.thumbnailObserver = null;
+  state.thumbnailEntries = [];
+  state.thumbnailPrimaryIndex = null;
+  state.thumbnailVisibleIndices = new Set();
+  elements.thumbnailList.replaceChildren();
+  elements.thumbnailStrip.hidden = true;
+  elements.thumbnailsToggle.disabled = true;
+  elements.thumbnailsToggle.setAttribute('aria-expanded', 'false');
+  elements.thumbnailsToggle.setAttribute('aria-label', 'Show page thumbnails');
   elements.error.hidden = true;
   elements.fallback.hidden = true;
   elements.tify.hidden = true;
@@ -720,6 +931,9 @@ async function initialize() {
   state.toc = buildToc(state.volume, state.manifest);
   renderToc();
   renderFallback();
+  renderThumbnailRail();
+  elements.thumbnailsToggle.disabled = false;
+  setThumbnailStripOpen(state.thumbnailsOpen);
   updatePageUi();
   elements.fallback.hidden = false;
   elements.loadingTitle.textContent = 'Opening the image reader';
@@ -810,6 +1024,35 @@ elements.contents.addEventListener('click', (event) => {
   closeDrawer({ restoreFocus: false });
   elements.stage.focus();
 });
+elements.thumbnailsToggle.addEventListener('click', () => {
+  setThumbnailStripOpen(!state.thumbnailsOpen, { smooth: true });
+});
+elements.thumbnailList.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-page-index]');
+  if (!button) return;
+  const index = Number(button.dataset.pageIndex);
+  if (!Number.isInteger(index) || !state.pages[index]) return;
+  setCurrentIndex(index);
+});
+elements.thumbnailList.addEventListener('keydown', (event) => {
+  const button = event.target.closest('button[data-page-index]');
+  if (!button) return;
+  const index = Number(button.dataset.pageIndex);
+  if (!Number.isInteger(index)) return;
+  let nextIndex = null;
+  if (event.key === 'ArrowLeft') nextIndex = index - 1;
+  if (event.key === 'ArrowRight') nextIndex = index + 1;
+  if (event.key === 'Home') nextIndex = 0;
+  if (event.key === 'End') nextIndex = Math.max(0, state.pages.length - (state.mode === 'spread' ? 2 : 1));
+  if (event.key === 'PageUp') nextIndex = index - 10;
+  if (event.key === 'PageDown') nextIndex = index + 10;
+  if (nextIndex == null) return;
+  event.preventDefault();
+  nextIndex = Math.max(0, Math.min(state.pages.length - 1, nextIndex));
+  setCurrentIndex(nextIndex);
+  state.thumbnailEntries[nextIndex]?.button.focus({ preventScroll: true });
+  centerThumbnail(nextIndex);
+});
 elements.drawerToggle.addEventListener('click', () => {
   if (elements.drawer.dataset.open === 'true') closeDrawer();
   else openDrawer();
@@ -890,6 +1133,7 @@ elements.fallbackScroll.addEventListener('pointercancel', () => { swipeStart = n
 window.addEventListener('beforeunload', () => {
   state.controller?.abort();
   if (state.tifyTimer) window.clearInterval(state.tifyTimer);
+  state.thumbnailObserver?.disconnect();
   state.tify?.destroy?.();
 });
 

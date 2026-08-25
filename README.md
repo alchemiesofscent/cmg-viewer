@@ -8,6 +8,10 @@ The application keeps its searchable catalogue, IIIF Presentation manifests,
 and viewer routes on GitHub Pages. Page images remain on BBAW's HTTPS IIIF
 Image API, so the repository does not duplicate the scan collection.
 
+The reader provides logical contents, stable scan-level URLs, single and
+facing-page layouts, full-resolution zoom, and a keyboard-accessible thumbnail
+rail that loads only nearby previews.
+
 The reviewed live census currently contains 218 work-level entries mapped to
 143 physical viewers and 37,756 available scans. Of those viewers, 117 use
 METS and 26 use a validated legacy-HTML/Digilib fallback.

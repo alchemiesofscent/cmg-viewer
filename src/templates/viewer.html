@@ -43,6 +43,10 @@
         <span aria-hidden="true">☰</span><span>Contents</span>
       </button>
 
+      <button class="tool-button thumbnails-toggle" id="thumbnails-toggle" type="button" aria-expanded="false" aria-controls="thumbnail-strip" aria-label="Show page thumbnails" disabled>
+        <span aria-hidden="true">▦</span><span>Thumbnails</span>
+      </button>
+
       <div class="page-controls" aria-label="Page navigation">
         <button class="tool-button square" id="previous-page" type="button" aria-label="Previous page">←</button>
         <form class="page-jump" id="page-jump-form">
@@ -99,6 +103,16 @@
         </div>
       </section>
     </main>
+
+    <nav class="thumbnail-strip" id="thumbnail-strip" aria-label="Page thumbnails" hidden>
+      <div class="thumbnail-summary" aria-hidden="true">
+        <strong>Scans</strong>
+        <span id="thumbnail-count">—</span>
+      </div>
+      <div class="thumbnail-scroller" id="thumbnail-scroller">
+        <ol class="thumbnail-list" id="thumbnail-list"></ol>
+      </div>
+    </nav>
 
     <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
     <aside class="contents-drawer" id="contents-drawer" role="dialog" aria-modal="true" aria-labelledby="contents-heading" aria-hidden="true" inert>

@@ -196,6 +196,11 @@ def validate_volume(
         f'data-volume-id="{volume_id}"' in route_text,
         f"Viewer route does not identify {volume_id}: {route_path}",
     )
+    require(
+        'id="thumbnail-strip"' in route_text
+        and 'id="thumbnail-list"' in route_text,
+        f"Viewer route has no thumbnail rail: {route_path}",
+    )
 
     volume = read_json(volume_path)
     manifest = read_json(manifest_path)
@@ -255,6 +260,12 @@ def validate_volume(
         validate_url(service, host="digilib.bbaw.de")
         require("/digilib/Scaler/IIIF/" in service, f"Unexpected IIIF path: {service}")
         validate_url(page.get("imageUrl", ""), host="digilib.bbaw.de")
+        thumbnail = page.get("thumbnailUrl", "")
+        validate_url(thumbnail, host="digilib.bbaw.de")
+        require(
+            thumbnail == f"{service}/full/200,/0/default.jpg",
+            f"Page thumbnail does not match its IIIF service: {volume_id} ORDER {order}",
+        )
         validate_url(page.get("sourcePageUrl", ""), host="cmg.bbaw.de")
         parsed_source = urllib.parse.urlsplit(page["sourcePageUrl"])
         query = urllib.parse.parse_qs(parsed_source.query)
@@ -354,6 +365,8 @@ def validate_artifact(
         dist / "data" / "source-census.json",
         dist / "data" / "sync-report.json",
         dist / "iiif" / "collection.json",
+        dist / "assets" / "viewer.js",
+        dist / "assets" / "viewer.css",
         dist / "assets" / "vendor" / "tify" / "tify.js",
         dist / "assets" / "vendor" / "tify" / "tify.css",
         dist / "assets" / "vendor" / "tify" / "LICENSE",
