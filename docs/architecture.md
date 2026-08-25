@@ -26,8 +26,11 @@ Controlled, anchored author forms and explicit editorial or translation-role
 clauses receive searchable values plus field-level provenance. Roleless MODS
 names remain contributors; multi-year citations keep every year and do not
 receive an ambiguous singular year. The current full METS set supplies no MODS
-source-language values, so the source-language facet is left empty rather than
-inferred from a series name. Explicit translation targets remain searchable.
+source-language values. A reviewed configuration therefore supplies documented
+defaults at source, collection, volume, or logical-work scope, in that order of
+precedence. Each assigned value retains the matched rule and BBAW evidence URL
+in `metadataProvenance`; explicit translation targets remain separate and
+searchable.
 
 Generated files use this layout:
 

@@ -70,6 +70,7 @@ def validate_catalogue_metadata(record: dict[str, Any]) -> None:
     )
 
     for field in (
+        "languages",
         "authors",
         "editors",
         "translationLanguages",
@@ -90,6 +91,35 @@ def validate_catalogue_metadata(record: dict[str, Any]) -> None:
             set(values) <= evidenced_values,
             f"Catalogue {field} contains an unsupported assignment: {record_id}",
         )
+
+    for evidence in field_provenance.get("languages", []):
+        require(
+            isinstance(evidence, dict),
+            f"Catalogue language evidence is not an object: {record_id}",
+        )
+        if evidence.get("source") != "reviewed-source-language-default":
+            continue
+        require(
+            bool(evidence.get("evidence")),
+            f"Reviewed language evidence is empty: {record_id}",
+        )
+        require(
+            str(evidence.get("evidenceField", "")).startswith(
+                "config.languageDefaults."
+            ),
+            f"Reviewed language rule path is invalid: {record_id}",
+        )
+        require(
+            evidence.get("rule")
+            in {
+                "bySourceId-default",
+                "byCollection-default",
+                "byVolumeId-default",
+                "byWorkId-default",
+            },
+            f"Reviewed language rule scope is invalid: {record_id}",
+        )
+        validate_url(evidence.get("evidenceUrl", ""), host="cmg.bbaw.de")
 
     for field in ("seriesNumber", "year", "editionYear"):
         value = record.get(field, "")
@@ -469,6 +499,10 @@ def validate_artifact(
     for record in items:
         volume_id = record["volumeId"]
         validate_catalogue_metadata(record)
+        require(
+            bool(record.get("languages")),
+            f"Catalogue source language is unreviewed: {record.get('id')}",
+        )
         require(
             str(record.get("startPn")) in volume_maps[volume_id],
             f"Catalogue deep link is absent: {record.get('id')} pn={record.get('startPn')}",

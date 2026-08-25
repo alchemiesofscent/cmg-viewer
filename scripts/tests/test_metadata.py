@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import copy
+import json
+from pathlib import Path
 import unittest
 
-from scripts import metadata, sync_full
+from scripts import metadata, sync_full, validate
 
 
 BASE_URL = "https://alchemiesofscent.github.io/cmg-viewer"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+LANGUAGE_DEFAULTS = json.loads(
+    (PROJECT_ROOT / "config" / "catalogue-sources.json").read_text(
+        encoding="utf-8"
+    )
+)["languageDefaults"]
 
 
 def work_fixture(
@@ -314,6 +323,89 @@ class VolumeConsensusTests(unittest.TestCase):
         values = metadata.enrich_works(works)
         self.assertEqual(values[2]["seriesNumber"], "")
         self.assertEqual(sync_full.series_number_for_works(works), "")
+
+
+class ReviewedLanguageDefaultTests(unittest.TestCase):
+    def test_scope_precedence_is_source_collection_volume_then_work(self) -> None:
+        cmg = work_fixture("CMG item")
+        cmg.update({"sourceIds": ["cmg"]})
+        diels = work_fixture(
+            "Diels Handschriftenkatalog",
+            work_id="diels_01--pn-default--01",
+            volume_id="diels_01",
+            collection="Diels",
+        )
+        diels.update({"sourceIds": ["translations-galen"]})
+        supplement = work_fixture(
+            "Arabic version",
+            work_id="suppl_03--pn-default--01",
+            volume_id="suppl_03",
+            collection="CMG Supplementum",
+        )
+        supplement.update({"sourceIds": ["cmg-supplementum"]})
+        greek_exception = work_fixture(
+            "Greek re-edition",
+            work_id="suppl_or_02--pn-119--01",
+            volume_id="suppl_or_02",
+            collection="CMG Supplementum Orientale",
+        )
+        greek_exception.update({"sourceIds": ["cmg-supplementum-orientale"]})
+
+        values = metadata.enrich_works(
+            [cmg, diels, supplement, greek_exception], LANGUAGE_DEFAULTS
+        )
+        self.assertEqual(
+            [value["languages"] for value in values],
+            [["Ancient Greek"], ["German"], ["Arabic"], ["Ancient Greek"]],
+        )
+        evidence_fields = [
+            value["metadataProvenance"]["languages"][0]["evidenceField"]
+            for value in values
+        ]
+        self.assertEqual(
+            evidence_fields,
+            [
+                "config.languageDefaults.bySourceId.cmg",
+                "config.languageDefaults.byCollection.Diels",
+                "config.languageDefaults.byVolumeId.suppl_03",
+                "config.languageDefaults.byWorkId.suppl_or_02--pn-119--01",
+            ],
+        )
+
+    def test_mixed_language_volume_preserves_each_evidenced_value(self) -> None:
+        work = work_fixture(
+            "Supplementum II",
+            work_id="suppl_02--pn-default--01",
+            volume_id="suppl_02",
+            collection="CMG Supplementum",
+        )
+        work.update({"sourceIds": ["cmg-supplementum"]})
+        value = metadata.enrich_works([work], LANGUAGE_DEFAULTS)[0]
+        self.assertEqual(value["languages"], ["Latin", "Ancient Greek"])
+        self.assertEqual(
+            {
+                record["value"]
+                for record in value["metadataProvenance"]["languages"]
+            },
+            {"Latin", "Ancient Greek"},
+        )
+        validate.validate_catalogue_metadata(value)
+
+        broken = copy.deepcopy(value)
+        broken["metadataProvenance"]["languages"][0]["evidenceUrl"] = ""
+        with self.assertRaises(validate.ValidationError):
+            validate.validate_catalogue_metadata(broken)
+
+    def test_conflicting_source_defaults_fail_closed(self) -> None:
+        work = work_fixture("Conflicting source memberships")
+        work.update({"sourceIds": ["cmg", "cml"]})
+        with self.assertRaises(metadata.MetadataError):
+            metadata.enrich_works([work], LANGUAGE_DEFAULTS)
+
+    def test_malformed_default_configuration_is_rejected(self) -> None:
+        invalid = {**LANGUAGE_DEFAULTS, "precedence": ["workId", "sourceId"]}
+        with self.assertRaises(metadata.MetadataError):
+            metadata.validate_language_defaults(invalid)
 
 
 class FullSyncIntegrationTests(unittest.TestCase):

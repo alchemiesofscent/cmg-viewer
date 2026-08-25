@@ -20,11 +20,17 @@ validates `dist/`. The Pages artifact is uploaded only after every gate passes.
 Consequently, an upstream outage, unexpected catalogue-count change, invalid
 manifest, or build failure cannot replace the last successful deployment.
 
+After a successful scheduled synchronization, the workflow commits the compact
+`data/last-successful-sync.json` marker with a `[skip ci]` commit. Besides making
+the reviewed counts visible in Git, this keeps the public repository active so
+GitHub does not automatically disable its scheduled workflow after 60 days.
+Push and manual runs never write this marker.
+
 The deploy job uses GitHub's `github-pages` environment and OIDC deployment
-token. Repository access remains read-only; the workflow does not commit
-generated catalogue data or caches. Pages deployment requires only the
-workflow-level `pages: write` and `id-token: write` permissions declared in the
-workflow.
+token. The workflow's `contents: write` permission is used only by the guarded
+scheduled marker step; generated catalogue data and caches are never committed.
+Pages publication uses the separately declared `pages: write` and
+`id-token: write` permissions.
 
 The equivalent release check can be run locally from the repository root:
 

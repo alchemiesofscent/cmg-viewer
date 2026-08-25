@@ -221,6 +221,10 @@ class WorkOutputTests(unittest.TestCase):
             volume_fixture(),
         )
         self.assertEqual(item["languages"], ["grc"])
+        self.assertEqual(
+            item["metadataProvenance"]["languages"][0]["source"],
+            "volume-metadata-language",
+        )
         self.assertEqual(item["languageHints"][0]["code"], "deu")
         self.assertEqual(item["editors"], [])
         self.assertEqual(item["contributors"], ["Unroled Contributor"])

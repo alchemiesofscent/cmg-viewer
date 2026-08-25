@@ -310,6 +310,28 @@ def work_catalogue_item(
         for field, records in work.get("metadataProvenance", {}).items()
         if records
     }
+    existing_language_evidence = {
+        record.get("value")
+        for record in field_provenance.get("languages", [])
+        if isinstance(record, dict)
+    }
+    volume_language_source = (
+        "mets-language-term"
+        if volume.get("source", {}).get("metsUrl")
+        else "volume-metadata-language"
+    )
+    for language in unique_strings(metadata.get("languages", [])):
+        if language in existing_language_evidence:
+            continue
+        field_provenance.setdefault("languages", []).append(
+            metadata_enrichment.provenance(
+                language,
+                source=volume_language_source,
+                evidence=language,
+                evidence_field="volume.metadata.languages",
+            )
+        )
+        existing_language_evidence.add(language)
     if edition_year:
         edition_source = (
             "mets-date-issued"
@@ -558,12 +580,21 @@ def main(argv: list[str] | None = None) -> int:
 
     cache_dir = args.cache.resolve()
     dist_dir = args.dist.resolve()
+    catalogue_config_path = args.catalogue_config.resolve()
+    catalogue_config = read_json(catalogue_config_path)
     census = catalogue.crawl_catalogue(
-        args.catalogue_config.resolve(),
+        catalogue_config_path,
         cache_dir=cache_dir,
         offline=args.offline,
         refresh=args.refresh,
     )
+    try:
+        enriched_works = metadata_enrichment.enrich_works(
+            census["works"], catalogue_config.get("languageDefaults")
+        )
+    except metadata_enrichment.MetadataError as exc:
+        raise FullSyncError(f"Invalid reviewed language defaults: {exc}") from exc
+    census = {**census, "works": enriched_works}
     plans = build_plans(census, read_json(args.mets_config.resolve()))
     selected = set(args.volumes or [])
     known_ids = {plan["seed"]["id"] for plan in plans}
@@ -653,6 +684,7 @@ if __name__ == "__main__":
         FullSyncError,
         catalogue.CatalogueError,
         fallback.FallbackError,
+        metadata_enrichment.MetadataError,
         sync.SyncError,
     ) as exc:
         print(f"full sync error: {exc}", file=sys.stderr)

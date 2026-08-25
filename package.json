@@ -2,6 +2,7 @@
   "name": "cmg-viewer",
   "version": "0.1.0",
   "private": true,
+  "license": "AGPL-3.0-only",
   "description": "Static catalogue and IIIF viewer for the BBAW CMG/CML digital editions",
   "type": "module",
   "packageManager": "pnpm@11.19.0",

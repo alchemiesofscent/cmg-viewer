@@ -147,6 +147,148 @@
       "reason": "Auxiliary original-page helper for suppl_or_05_01.php, not a separate physical volume."
     }
   ],
+  "languageDefaults": {
+    "reviewedAt": "2026-08-25",
+    "precedence": [
+      "sourceId",
+      "collection",
+      "volumeId",
+      "workId"
+    ],
+    "bySourceId": {
+      "cmg": {
+        "languages": ["Ancient Greek"],
+        "basis": "The BBAW defines the Corpus Medicorum Graecorum as its series of critical editions of Greek medical texts.",
+        "basisUrl": "https://cmg.bbaw.de/en/homepage/corpus-medicum"
+      },
+      "cmg-supplementum-orientale": {
+        "languages": ["Arabic"],
+        "basis": "Every scanned Supplementum Orientale title in this reviewed catalogue corpus identifies an Arabic version; logical Greek re-editions in volume II are overridden below.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publisupplor.html"
+      },
+      "cml": {
+        "languages": ["Latin"],
+        "basis": "The BBAW defines the Corpus Medicorum Latinorum as its series of critical editions of Latin medical texts.",
+        "basisUrl": "https://cmg.bbaw.de/en/homepage/corpus-medicum"
+      },
+      "other-aetius": {
+        "languages": ["Ancient Greek"],
+        "basis": "This allowlisted source page contains editions of the Greek books of Aëtius of Amida.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_aetius.html"
+      },
+      "other-alexander-tralles": {
+        "languages": ["Ancient Greek"],
+        "basis": "This allowlisted source page contains Puschmann's edition of the Greek text of Alexander of Tralles.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_alex_trall.html"
+      },
+      "other-anonymus-londinensis": {
+        "languages": ["Ancient Greek"],
+        "basis": "This allowlisted source page contains Diels's edition of the Greek Anonymus Londinensis papyrus.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_anon_lond.html"
+      },
+      "other-dioscurides": {
+        "languages": ["Ancient Greek"],
+        "basis": "This allowlisted source page contains Wellmann's Greek edition of Dioscorides and associated Greek fragments.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_dioscurides.html"
+      },
+      "other-galen": {
+        "languages": ["Ancient Greek"],
+        "basis": "This allowlisted source page groups editions of Galen's Greek works; three explicitly Arabic editions are overridden below.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_galen.html"
+      },
+      "other-hippocrates": {
+        "languages": ["Ancient Greek"],
+        "basis": "This allowlisted source page contains Kühlewein's Greek edition of the Hippocratic works.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_hippocrates.html"
+      },
+      "other-theodorus-priscianus": {
+        "languages": ["Latin"],
+        "basis": "This allowlisted source page contains Rose's edition of Theodorus Priscianus's Latin Euporista.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_theod_prisc.html"
+      },
+      "other-ideler": {
+        "languages": ["Ancient Greek"],
+        "basis": "This allowlisted source page contains Ideler's Physici et medici graeci.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_ideler.html"
+      },
+      "translations-galen": {
+        "languages": ["Ancient Greek"],
+        "basis": "This allowlisted source page groups modern translations of Galen's Greek works; the separately allowlisted Diels catalogue is overridden by collection below.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publiuebersetzungen_galen.html"
+      }
+    },
+    "byCollection": {
+      "Diels": {
+        "languages": ["German"],
+        "basis": "The four separately allowlisted Diels viewers are parts of Diels's German-language manuscript catalogue, not Galen translations.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/diels_01.php"
+      }
+    },
+    "byVolumeId": {
+      "suppl_01": {
+        "languages": ["Ancient Greek", "Arabic"],
+        "basis": "The catalogue citation identifies Galen's Greek Timaeus fragments and an Arabic appendix.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publisuppl.html"
+      },
+      "suppl_02": {
+        "languages": ["Latin", "Ancient Greek"],
+        "basis": "The catalogue citation identifies a surviving Latin translation and the editor's Greek retroversion.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publisuppl.html"
+      },
+      "suppl_03": {
+        "languages": ["Arabic"],
+        "basis": "The catalogue citation explicitly identifies Hunayn's Arabic version as the edited source text.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publisuppl.html"
+      },
+      "suppl_04": {
+        "languages": ["Ancient Greek"],
+        "basis": "The catalogue citation identifies the edition of Rufus of Ephesus in the Greek medical supplement.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publisuppl.html"
+      },
+      "suppl_05": {
+        "languages": ["Ancient Greek"],
+        "basis": "The catalogue citation identifies the edition of Galen's De instrumento odoratus in the Greek medical supplement.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publisuppl.html"
+      },
+      "suppl_06": {
+        "languages": ["German"],
+        "basis": "The catalogue citation identifies Jutta Kollesch's modern German collection Kleine Schriften zur antiken Medizin.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publisuppl.html"
+      },
+      "wa_simon_anatomie_bd_1": {
+        "languages": ["Arabic"],
+        "basis": "The catalogue citation explicitly describes this volume as an edition of the Arabic text.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_galen.html"
+      },
+      "wa_simon_gal_sieben_buecher_anatom": {
+        "languages": ["Arabic"],
+        "basis": "The catalogue citation explicitly describes this volume as an edition of the Arabic text.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_galen.html"
+      },
+      "wa_gal_medizin_namen": {
+        "languages": ["Arabic"],
+        "basis": "The catalogue citation explicitly describes this work as edited in Arabic with a German translation.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publiweitereausgaben_galen.html"
+      }
+    },
+    "byWorkId": {
+      "suppl_or_02--pn-2--01": {
+        "languages": ["Arabic", "Ancient Greek"],
+        "basis": "The volume-level entry covers both the Arabic versions and the two Greek re-editions contained in Supplementum Orientale II.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publisupplor.html"
+      },
+      "suppl_or_02--pn-119--01": {
+        "languages": ["Ancient Greek"],
+        "basis": "The catalogue citation identifies the re-edition of Schöne's Greek text, not one of the preceding Arabic versions.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publisupplor.html"
+      },
+      "suppl_or_02--pn-133--01": {
+        "languages": ["Ancient Greek"],
+        "basis": "The catalogue citation identifies the re-edition of Kalbfleisch's Greek text, not one of the preceding Arabic versions.",
+        "basisUrl": "https://cmg.bbaw.de/epubl/online/publisupplor.html"
+      }
+    }
+  },
   "expectedCounts": {
     "catalogueSources": 13,
     "catalogueWorkLinks": 214,

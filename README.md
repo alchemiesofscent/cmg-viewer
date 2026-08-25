@@ -31,13 +31,12 @@ means the legacy CMG physical scan order, not an array index or printed page
 label. For a quick four-volume fixture build, use `pnpm sync:samples` instead
 of `pnpm sync`.
 
-Catalogue fields are evidence-based. Structured language data and explicit
-author/editor/translation clauses are indexed when present; roleless METS names
-remain generic contributors, and missing metadata is not guessed.
-
-The current full upstream METS set exposes no MODS source-language values.
-Explicit translation targets are searchable, while the source-language facet
-stays empty until a reviewed series- or work-level classification is chosen.
+Catalogue fields are evidence-based. Explicit author/editor/translation clauses
+and reviewed source-language defaults are indexed with field-level provenance;
+roleless METS names remain generic contributors, and missing metadata is not
+guessed. The upstream METS currently supplies no MODS language terms, so the
+language facet uses the reviewed source, collection, volume, and work rules
+documented in [language defaults](docs/language-defaults.md).
 
 ## Project layout
 
@@ -45,6 +44,7 @@ stays empty until a reviewed series- or work-level classification is chosen.
 - `scripts/` — synchronization, normalization, validation, and static build.
 - `src/` — dependency-light catalogue and viewer interface.
 - `scripts/tests/` — generator, ingestion, and URL-contract tests.
+- `data/last-successful-sync.json` — compact marker updated after each scheduled sync.
 - `dist/` — generated GitHub Pages artifact (ignored by Git).
 
 The older single-volume prototype in `bbaw-cmg-tify-mobile-prototype/` is kept
@@ -63,3 +63,10 @@ See [the architecture decision](docs/architecture.md) for the data model and
 sync guarantees, [the reviewed catalogue scope](docs/catalogue-scope.md) for
 the upstream census, and [the deployment guide](docs/deployment.md) for Pages
 setup.
+
+## License
+
+CMG Viewer is released under the [GNU Affero General Public License v3.0](LICENSE).
+The generated site also includes TIFY 0.35.0 under the same license family; see
+[the third-party notices](THIRD_PARTY_NOTICES.md). Catalogue records and page
+images remain linked to their BBAW sources and are not relicensed here.

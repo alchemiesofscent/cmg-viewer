@@ -13,6 +13,24 @@ import re
 from typing import Any, Iterable
 
 
+LANGUAGE_DEFAULT_PRECEDENCE = (
+    "sourceId",
+    "collection",
+    "volumeId",
+    "workId",
+)
+LANGUAGE_DEFAULT_MAPS = {
+    "sourceId": "bySourceId",
+    "collection": "byCollection",
+    "volumeId": "byVolumeId",
+    "workId": "byWorkId",
+}
+
+
+class MetadataError(ValueError):
+    """A reviewed metadata rule is malformed or ambiguous."""
+
+
 FORMAL_SERIES_COLLECTIONS = {
     "CMG",
     "CMG Supplementum",
@@ -307,6 +325,7 @@ def provenance(
     evidence_field: str,
     rule: str | None = None,
     evidence_ids: list[str] | None = None,
+    evidence_url: str | None = None,
 ) -> dict[str, Any]:
     record: dict[str, Any] = {
         "value": value,
@@ -318,7 +337,132 @@ def provenance(
         record["rule"] = rule
     if evidence_ids:
         record["evidenceIds"] = evidence_ids
+    if evidence_url:
+        record["evidenceUrl"] = evidence_url
     return record
+
+
+def validate_language_defaults(value: Any) -> dict[str, Any]:
+    """Validate the curated default table and return it unchanged.
+
+    Defaults are data, not parsing heuristics.  Their declared precedence is
+    part of the schema so a future configuration edit cannot silently change
+    which reviewed assertion wins.
+    """
+
+    if not isinstance(value, dict):
+        raise MetadataError("languageDefaults must be an object")
+    if tuple(value.get("precedence", ())) != LANGUAGE_DEFAULT_PRECEDENCE:
+        raise MetadataError(
+            "languageDefaults.precedence must be sourceId, collection, "
+            "volumeId, workId"
+        )
+    reviewed_at = compact_space(value.get("reviewedAt"))
+    if not re.fullmatch(r"20\d{2}-\d{2}-\d{2}", reviewed_at):
+        raise MetadataError("languageDefaults.reviewedAt must be an ISO date")
+
+    for map_name in LANGUAGE_DEFAULT_MAPS.values():
+        rules = value.get(map_name)
+        if not isinstance(rules, dict):
+            raise MetadataError(f"languageDefaults.{map_name} must be an object")
+        for key, rule in rules.items():
+            if not compact_space(key) or not isinstance(rule, dict):
+                raise MetadataError(
+                    f"languageDefaults.{map_name} contains an invalid rule"
+                )
+            languages = rule.get("languages")
+            if not isinstance(languages, list) or not languages:
+                raise MetadataError(
+                    f"languageDefaults.{map_name}.{key}.languages must be a "
+                    "non-empty list"
+                )
+            normalized = unique_strings(languages)
+            if len(normalized) != len(languages):
+                raise MetadataError(
+                    f"languageDefaults.{map_name}.{key}.languages contains "
+                    "blank or duplicate values"
+                )
+            if not compact_space(rule.get("basis")):
+                raise MetadataError(
+                    f"languageDefaults.{map_name}.{key}.basis is required"
+                )
+            basis_url = compact_space(rule.get("basisUrl"))
+            if not basis_url.startswith("https://cmg.bbaw.de/"):
+                raise MetadataError(
+                    f"languageDefaults.{map_name}.{key}.basisUrl must be an "
+                    "HTTPS BBAW URL"
+                )
+    return value
+
+
+def _language_rule_provenance(
+    *,
+    languages: list[str],
+    rule: dict[str, Any],
+    map_name: str,
+    key: str,
+) -> list[dict[str, Any]]:
+    evidence_field = f"config.languageDefaults.{map_name}.{key}"
+    return [
+        provenance(
+            language,
+            source="reviewed-source-language-default",
+            evidence=compact_space(rule["basis"]),
+            evidence_field=evidence_field,
+            evidence_url=compact_space(rule["basisUrl"]),
+            rule=f"{map_name}-default",
+        )
+        for language in languages
+    ]
+
+
+def resolve_language_default(
+    work: dict[str, Any], defaults: dict[str, Any] | None
+) -> tuple[list[str], list[dict[str, Any]]]:
+    """Resolve one reviewed default, from broadest to most specific scope."""
+
+    if defaults is None:
+        return [], []
+    defaults = validate_language_defaults(defaults)
+    chosen: tuple[str, str, dict[str, Any]] | None = None
+
+    source_rules = defaults["bySourceId"]
+    source_matches = [
+        (source_id, source_rules[source_id])
+        for source_id in unique_strings(work.get("sourceIds", []))
+        if source_id in source_rules
+    ]
+    if source_matches:
+        distinct = {
+            tuple(unique_strings(rule["languages"]))
+            for _source_id, rule in source_matches
+        }
+        if len(distinct) != 1:
+            raise MetadataError(
+                f"Conflicting source-language defaults for work {work.get('id')!r}"
+            )
+        source_id, rule = source_matches[0]
+        chosen = ("bySourceId", source_id, rule)
+
+    selectors = (
+        ("byCollection", compact_space(work.get("collection"))),
+        ("byVolumeId", compact_space(work.get("volumeId"))),
+        ("byWorkId", compact_space(work.get("id"))),
+    )
+    for map_name, key in selectors:
+        if key and key in defaults[map_name]:
+            chosen = (map_name, key, defaults[map_name][key])
+
+    if chosen is None:
+        return [], []
+    map_name, key, rule = chosen
+    languages = unique_strings(rule["languages"])
+    return languages, _language_rule_provenance(
+        languages=languages,
+        rule=rule,
+        map_name=map_name,
+        key=key,
+    )
 
 
 def strip_leading_series(text: str, collection: str) -> str:
@@ -467,14 +611,34 @@ def direct_year_evidence(
     ]
 
 
-def extract_work_metadata(work: dict[str, Any]) -> dict[str, Any]:
+def extract_work_metadata(
+    work: dict[str, Any],
+    language_defaults: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     authors, author_records = extract_authors(work)
     editors, editor_records = extract_editors(work)
     translation_languages, translation_records = extract_translation_languages(work)
     series_numbers, series_records = direct_series_evidence(work)
     years, year_records = direct_year_evidence(work)
+    explicit_languages = unique_strings(work.get("languages", []))
+    if explicit_languages:
+        languages = explicit_languages
+        language_records = [
+            provenance(
+                language,
+                source="catalogue-explicit-language-value",
+                evidence=language,
+                evidence_field="languages",
+            )
+            for language in languages
+        ]
+    else:
+        languages, language_records = resolve_language_default(
+            work, language_defaults
+        )
     field_provenance: dict[str, list[dict[str, Any]]] = {}
     for field, records in (
+        ("languages", language_records),
         ("authors", author_records),
         ("editors", editor_records),
         ("translationLanguages", translation_records),
@@ -486,6 +650,7 @@ def extract_work_metadata(work: dict[str, Any]) -> dict[str, Any]:
         if records:
             field_provenance[field] = records
     return {
+        "languages": languages,
         "authors": authors,
         "editors": editors,
         "translationLanguages": translation_languages,
@@ -497,13 +662,33 @@ def extract_work_metadata(work: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def enrich_works(works: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+def enrich_works(
+    works: Iterable[dict[str, Any]],
+    language_defaults: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Enrich works and propagate only unanimous series/year evidence per volume."""
 
+    if language_defaults is not None:
+        validate_language_defaults(language_defaults)
     enriched: list[dict[str, Any]] = []
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for work in works:
-        value = {**work, **extract_work_metadata(work), "_metadataEnriched": True}
+        if work.get("_metadataEnriched"):
+            value = {
+                **work,
+                "metadataProvenance": {
+                    field: [dict(record) for record in records]
+                    for field, records in work.get(
+                        "metadataProvenance", {}
+                    ).items()
+                },
+            }
+        else:
+            value = {
+                **work,
+                **extract_work_metadata(work, language_defaults),
+                "_metadataEnriched": True,
+            }
         enriched.append(value)
         grouped[compact_space(work.get("volumeId"))].append(value)
 
@@ -561,6 +746,7 @@ def coverage_counts(works: Iterable[dict[str, Any]]) -> dict[str, int]:
     values = enrich_works(works)
     return {
         "items": len(values),
+        "languages": sum(bool(item["languages"]) for item in values),
         "authors": sum(bool(item["authors"]) for item in values),
         "editors": sum(bool(item["editors"]) for item in values),
         "translationLanguages": sum(
