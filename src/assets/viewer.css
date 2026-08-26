@@ -337,7 +337,6 @@
   gap: clamp(0.75rem, 2.2vw, 1.6rem);
   margin: 0 auto;
   overflow-anchor: none;
-  transition: width 140ms ease, max-width 140ms ease;
 }
 
 .continuous-page {
