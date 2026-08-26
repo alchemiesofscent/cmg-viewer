@@ -29,7 +29,7 @@
         <a class="header-action" id="cmg-source" href="https://cmg.bbaw.de/epubl/online/editionen.html" rel="external noopener" target="_blank" aria-label="View this page at CMG">
           <span class="wide-label">View at CMG</span><span aria-hidden="true">↗</span>
         </a>
-        <a class="header-action" href="https://github.com/alchemiesofscent/cmg-viewer" rel="external noopener" target="_blank" aria-label="View the CMG Viewer source code">
+        <a class="header-action source-action" href="https://github.com/alchemiesofscent/cmg-viewer" rel="external noopener" target="_blank" aria-label="View the CMG Viewer source code">
           <span class="wide-label">Source</span><span aria-hidden="true">&lt;/&gt;</span>
         </a>
         <button class="header-action" id="share-view" type="button" aria-label="Copy a link to this view">
@@ -39,49 +39,62 @@
     </header>
 
     <nav class="reader-toolbar" aria-label="Reader controls">
-      <button class="tool-button contents-toggle" id="contents-toggle" type="button" aria-expanded="false" aria-controls="contents-drawer">
-        <span aria-hidden="true">☰</span><span>Contents</span>
-      </button>
+      <div class="reader-secondary-tools" id="reader-secondary-tools" aria-label="Additional reader tools">
+        <div class="reader-actions">
+          <button class="tool-button contents-toggle" id="contents-toggle" type="button" aria-expanded="false" aria-controls="contents-drawer">
+            <span aria-hidden="true">☰</span><span>Contents</span>
+          </button>
 
-      <button class="tool-button thumbnails-toggle" id="thumbnails-toggle" type="button" aria-expanded="false" aria-controls="thumbnail-strip" aria-label="Show page thumbnails" disabled>
-        <span aria-hidden="true">▦</span><span>Thumbnails</span>
-      </button>
+          <button class="tool-button thumbnails-toggle" id="thumbnails-toggle" type="button" aria-expanded="false" aria-controls="thumbnail-strip" aria-label="Show page thumbnails" disabled>
+            <span aria-hidden="true">▦</span><span>Thumbnails</span>
+          </button>
 
-      <button class="tool-button info-toggle" id="info-toggle" type="button" aria-pressed="false" aria-label="Show volume information" disabled>
-        <span aria-hidden="true">ⓘ</span><span>Info</span>
-      </button>
+          <button class="tool-button info-toggle" id="info-toggle" type="button" aria-pressed="false" aria-label="Show volume information" disabled>
+            <span aria-hidden="true">ⓘ</span><span>Info</span>
+          </button>
 
-      <button class="tool-button export-toggle" id="export-toggle" type="button" aria-pressed="false" aria-label="Show export options" disabled>
-        <span aria-hidden="true">⇩</span><span>Export</span>
-      </button>
+          <button class="tool-button export-toggle" id="export-toggle" type="button" aria-pressed="false" aria-label="Show export options" disabled>
+            <span aria-hidden="true">⇩</span><span>Export</span>
+          </button>
+        </div>
+
+        <div class="segmented-control" aria-label="Page layout">
+          <button id="single-page" type="button" aria-pressed="false" title="Continuous pages">Scroll</button>
+          <button id="two-pages" type="button" aria-pressed="false" title="Facing pages">2 pages</button>
+        </div>
+
+        <div class="zoom-controls" aria-label="Zoom">
+          <button class="tool-button square" id="zoom-out" type="button" aria-label="Zoom out">−</button>
+          <button class="tool-button reset-zoom" id="reset-zoom" type="button">Fit</button>
+          <button class="tool-button square" id="zoom-in" type="button" aria-label="Zoom in">+</button>
+        </div>
+
+        <button class="tool-button square fullscreen-button" id="fullscreen" type="button" aria-label="Enter full screen"><span aria-hidden="true">⛶</span><span class="fullscreen-label">Full screen</span></button>
+      </div>
 
       <div class="page-controls" aria-label="Page navigation">
-        <button class="tool-button square" id="previous-page" type="button" aria-label="Previous page">←</button>
+        <button class="tool-button square" id="previous-page" type="button" aria-label="Previous page" aria-keyshortcuts="ArrowLeft" title="Previous page (Left arrow)">←</button>
         <form class="page-jump" id="page-jump-form">
           <label for="page-order">Page</label>
           <input id="page-order" name="page" type="text" autocomplete="off" maxlength="16" aria-label="Go to printed page number or label" aria-describedby="page-status">
         </form>
         <span class="page-status" id="page-status">—</span>
-        <button class="tool-button square" id="next-page" type="button" aria-label="Next page">→</button>
+        <button class="tool-button square" id="next-page" type="button" aria-label="Next page" aria-keyshortcuts="ArrowRight" title="Next page (Right arrow)">→</button>
       </div>
 
       <div class="toolbar-spacer"></div>
-
-      <div class="segmented-control" aria-label="Page layout">
-        <button id="single-page" type="button" aria-pressed="false" title="Single page">1 page</button>
-        <button id="two-pages" type="button" aria-pressed="false" title="Facing pages">2 pages</button>
-      </div>
-
-      <div class="zoom-controls" aria-label="Zoom">
-        <button class="tool-button square" id="zoom-out" type="button" aria-label="Zoom out">−</button>
-        <button class="tool-button reset-zoom" id="reset-zoom" type="button">Fit</button>
-        <button class="tool-button square" id="zoom-in" type="button" aria-label="Zoom in">+</button>
-      </div>
-
-      <button class="tool-button square fullscreen-button" id="fullscreen" type="button" aria-label="Enter full screen">⛶</button>
+      <button class="tool-button mobile-tools-toggle" id="mobile-tools-toggle" type="button" aria-expanded="false" aria-controls="reader-secondary-tools">
+        <span aria-hidden="true">•••</span><span class="sr-only">More reader tools</span>
+      </button>
     </nav>
 
     <main class="reader-stage" id="reader-stage" tabindex="-1" aria-label="Digitized volume">
+      <section class="continuous-reader" id="continuous-reader" aria-label="Continuous page view" hidden>
+        <div class="continuous-scroll" id="continuous-scroll" tabindex="0">
+          <div class="continuous-pages" id="continuous-pages"></div>
+        </div>
+      </section>
+
       <div id="tify" hidden></div>
 
       <section class="fallback-reader" id="fallback-reader" aria-label="Page image viewer" hidden>

@@ -29,6 +29,9 @@ const elements = {
   cmgSource: document.querySelector('#cmg-source'),
   share: document.querySelector('#share-view'),
   stage: document.querySelector('#reader-stage'),
+  continuousReader: document.querySelector('#continuous-reader'),
+  continuousScroll: document.querySelector('#continuous-scroll'),
+  continuousPages: document.querySelector('#continuous-pages'),
   tify: document.querySelector('#tify'),
   fallback: document.querySelector('#fallback-reader'),
   fallbackScroll: document.querySelector('#fallback-scroll'),
@@ -64,8 +67,12 @@ const elements = {
   thumbnailStrip: document.querySelector('#thumbnail-strip'),
   thumbnailScroller: document.querySelector('#thumbnail-scroller'),
   thumbnailList: document.querySelector('#thumbnail-list'),
+  mobileToolsToggle: document.querySelector('#mobile-tools-toggle'),
+  secondaryTools: document.querySelector('#reader-secondary-tools'),
   live: document.querySelector('#reader-live'),
 };
+
+const mobileMedia = window.matchMedia('(max-width: 48rem)');
 
 const state = {
   volume: {},
@@ -75,19 +82,31 @@ const state = {
   index: 0,
   mode: new URLSearchParams(window.location.search).get('view') === 'single'
     ? 'single'
-    : (new URLSearchParams(window.location.search).get('view') === 'spread' || window.matchMedia('(min-width: 48rem)').matches ? 'spread' : 'single'),
+    : (new URLSearchParams(window.location.search).get('view') === 'spread' || !mobileMedia.matches ? 'spread' : 'single'),
   zoom: 1,
   tify: null,
   tifyTimer: null,
   tifyPageSignature: '',
   tifyView: '',
+  tifyNavigationGuardUntil: 0,
   toc: [],
   tocEntries: [],
-  thumbnailsOpen: true,
+  thumbnailsOpen: !mobileMedia.matches,
   thumbnailEntries: [],
   thumbnailObserver: null,
   thumbnailPrimaryIndex: null,
   thumbnailVisibleIndices: new Set(),
+  continuousEntries: [],
+  continuousImageObserver: null,
+  continuousLoadedIndices: new Set(),
+  continuousScrollFrame: null,
+  continuousSettleTimer: null,
+  continuousResizeTimer: null,
+  continuousResizeObserver: null,
+  continuousTargetIndex: null,
+  continuousReady: false,
+  continuousPrimaryIndex: null,
+  mobileToolsOpen: false,
   sourceUrl: '',
   controller: null,
 };
@@ -183,15 +202,21 @@ function serviceId(body) {
   return textValue(service.id || service['@id']).replace(/\/info\.json$/i, '');
 }
 
+function imageServiceUrl(record, canvas) {
+  const body = annotationBody(canvas);
+  return textValue(
+    record?.imageServiceId || record?.image_service_id || record?.imageService ||
+    record?.image_service || record?.serviceId || record?.service_id,
+  ) || serviceId(body);
+}
+
 function imageUrl(record, canvas) {
   const direct = textValue(record?.imageUrl || record?.image_url || record?.image || record?.resourceUrl || record?.resource_url);
   if (direct) return direct;
   const body = annotationBody(canvas);
   const bodyId = textValue(body.id || body['@id']);
   if (bodyId) return bodyId;
-  const service = serviceId(body) || textValue(
-    record?.imageServiceId || record?.image_service_id || record?.imageService || record?.image_service || record?.serviceId || record?.service_id,
-  );
+  const service = imageServiceUrl(record, canvas);
   return service ? `${service.replace(/\/$/, '')}/full/full/0/default.jpg` : '';
 }
 
@@ -204,11 +229,7 @@ function thumbnailUrl(record, canvas) {
   const thumbnail = arrayValue(canvas?.thumbnail)[0] || {};
   const thumbnailId = textValue(thumbnail.id || thumbnail['@id'] || thumbnail.url || thumbnail.href);
   if (thumbnailId) return thumbnailId;
-  const body = annotationBody(canvas);
-  const service = textValue(
-    record?.imageServiceId || record?.image_service_id || record?.imageService ||
-    record?.image_service || record?.serviceId || record?.service_id,
-  ) || serviceId(body);
+  const service = imageServiceUrl(record, canvas);
   return service ? `${service.replace(/\/$/, '')}/full/200,/0/default.jpg` : '';
 }
 
@@ -274,6 +295,7 @@ function normalizePages(volume, manifest) {
       order,
       label,
       canvasId,
+      service: imageServiceUrl(record, canvas),
       image: imageUrl(record, canvas),
       thumbnail: thumbnailUrl(record, canvas),
       width: integerValue(record.width, annotationBody(canvas).width, canvas.width),
@@ -579,6 +601,7 @@ function currentSpreadIndices() {
 }
 
 function displayedPageIndices() {
+  if (state.mode === 'single') return state.pages[state.index] ? [state.index] : [];
   if (state.tify) {
     const indices = arrayValue(state.tify.options?.pages)
       .map(Number)
@@ -762,6 +785,281 @@ function updateSourceHref() {
   }
 }
 
+function continuousImagePixelWidth(page, requestedWidth) {
+  const sourceWidth = integerValue(page?.width) || 2000;
+  const maximumWidth = Math.min(sourceWidth, state.zoom > 1.01 ? 3600 : 2000);
+  return Math.min(maximumWidth, Math.max(400, Math.ceil(requestedWidth / 400) * 400 || 1200));
+}
+
+function continuousImageUrl(page, width) {
+  if (page?.service) return `${page.service.replace(/\/$/, '')}/full/${width},/0/default.jpg`;
+  if (page?.image && !/\/full\/full\/0\/default\.(?:jpe?g|png)$/i.test(page.image)) return page.image;
+  if (page?.thumbnail) return page.thumbnail;
+  return '';
+}
+
+function hydrateContinuousImage(index) {
+  const entry = state.continuousEntries[index];
+  if (!entry || entry.failed) return;
+  const page = state.pages[index];
+  const renderedWidth = entry.frame.getBoundingClientRect().width || Math.min(elements.continuousScroll.clientWidth, 1100);
+  const requestedWidth = Math.ceil(renderedWidth * Math.min(window.devicePixelRatio || 1, 2));
+  const pixelWidth = continuousImagePixelWidth(page, requestedWidth);
+  if (entry.image && entry.pixelWidth >= pixelWidth) return;
+  if (entry.image) {
+    const previousImage = entry.image;
+    entry.image = null;
+    previousImage.removeAttribute('src');
+    previousImage.remove();
+    state.continuousLoadedIndices.delete(index);
+  }
+  const source = continuousImageUrl(page, pixelWidth);
+  if (!source) {
+    entry.failed = true;
+    entry.frame.dataset.imageFailed = 'true';
+    return;
+  }
+
+  const image = document.createElement('img');
+  const printedLabel = sourcePageLabel(page);
+  image.alt = printedLabel
+    ? `${pageDisplay(page, index)}, position ${index + 1} of ${state.pages.length}`
+    : `Page ${index + 1} of ${state.pages.length}`;
+  image.decoding = 'async';
+  image.loading = 'eager';
+  image.draggable = false;
+  if (page.width) image.width = page.width;
+  if (page.height) image.height = page.height;
+  image.addEventListener('load', () => {
+    if (entry.image === image) entry.frame.removeAttribute('data-loading');
+  }, { once: true });
+  image.addEventListener('error', () => {
+    if (entry.image !== image) return;
+    if (page.thumbnail && image.src !== page.thumbnail) {
+      image.src = page.thumbnail;
+      return;
+    }
+    entry.failed = true;
+    entry.frame.dataset.imageFailed = 'true';
+    image.remove();
+    entry.image = null;
+    entry.pixelWidth = 0;
+    state.continuousLoadedIndices.delete(index);
+  });
+  entry.frame.dataset.loading = 'true';
+  entry.frame.prepend(image);
+  entry.image = image;
+  entry.pixelWidth = pixelWidth;
+  state.continuousLoadedIndices.add(index);
+  image.src = source;
+}
+
+function releaseDistantContinuousImages(activeIndex) {
+  for (const index of [...state.continuousLoadedIndices]) {
+    if (Math.abs(index - activeIndex) <= 8) continue;
+    const entry = state.continuousEntries[index];
+    const image = entry?.image;
+    if (entry) {
+      entry.image = null;
+      entry.pixelWidth = 0;
+      entry.frame.removeAttribute('data-loading');
+    }
+    image?.removeAttribute('src');
+    image?.remove();
+    state.continuousLoadedIndices.delete(index);
+  }
+}
+
+function updateContinuousSelection(index) {
+  if (state.continuousPrimaryIndex != null) {
+    const previous = state.continuousEntries[state.continuousPrimaryIndex];
+    previous?.figure.removeAttribute('data-current');
+    previous?.figure.removeAttribute('aria-current');
+  }
+  const current = state.continuousEntries[index];
+  if (current) {
+    current.figure.dataset.current = 'true';
+    current.figure.setAttribute('aria-current', 'page');
+  }
+  state.continuousPrimaryIndex = index;
+}
+
+function renderContinuousPages() {
+  state.continuousImageObserver?.disconnect();
+  state.continuousImageObserver = null;
+  state.continuousResizeObserver?.disconnect();
+  state.continuousResizeObserver = null;
+  if (state.continuousScrollFrame != null) window.cancelAnimationFrame(state.continuousScrollFrame);
+  state.continuousScrollFrame = null;
+  if (state.continuousSettleTimer != null) window.clearTimeout(state.continuousSettleTimer);
+  state.continuousSettleTimer = null;
+  if (state.continuousResizeTimer != null) window.clearTimeout(state.continuousResizeTimer);
+  state.continuousResizeTimer = null;
+  state.continuousEntries = [];
+  state.continuousLoadedIndices = new Set();
+  state.continuousPrimaryIndex = null;
+  state.continuousReady = false;
+  const fragment = document.createDocumentFragment();
+
+  state.pages.forEach((page, index) => {
+    const figure = document.createElement('figure');
+    figure.className = 'continuous-page';
+    figure.dataset.pageIndex = String(index);
+    figure.setAttribute('aria-label', pageDisplay(page, index));
+
+    const frame = document.createElement('div');
+    frame.className = 'continuous-image-frame';
+    const width = integerValue(page.width) || 2;
+    const height = integerValue(page.height) || 3;
+    frame.style.aspectRatio = `${width} / ${height}`;
+
+    const caption = document.createElement('figcaption');
+    caption.textContent = pageDisplay(page, index);
+    figure.append(frame, caption);
+    fragment.append(figure);
+    state.continuousEntries[index] = { figure, frame, image: null, pixelWidth: 0, failed: false };
+  });
+
+  elements.continuousPages.replaceChildren(fragment);
+  updateContinuousSelection(state.index);
+  if ('ResizeObserver' in window) {
+    state.continuousResizeObserver = new ResizeObserver(() => {
+      if (state.mode !== 'single' || elements.continuousReader.hidden) return;
+      if (state.continuousResizeTimer != null) window.clearTimeout(state.continuousResizeTimer);
+      state.continuousResizeTimer = window.setTimeout(() => {
+        state.continuousResizeTimer = null;
+        scrollToContinuousPage(state.index, { behavior: 'auto' });
+      }, 120);
+    });
+    state.continuousResizeObserver.observe(elements.continuousScroll);
+  }
+}
+
+function observeContinuousImages() {
+  state.continuousImageObserver?.disconnect();
+  if (!('IntersectionObserver' in window)) {
+    for (let index = Math.max(0, state.index - 3); index <= Math.min(state.pages.length - 1, state.index + 3); index += 1) {
+      hydrateContinuousImage(index);
+    }
+    return;
+  }
+  state.continuousImageObserver = new IntersectionObserver((observations) => {
+    for (const observation of observations) {
+      if (!observation.isIntersecting) continue;
+      hydrateContinuousImage(Number(observation.target.dataset.pageIndex));
+    }
+  }, {
+    root: elements.continuousScroll,
+    rootMargin: '150% 0px',
+    threshold: 0.01,
+  });
+  state.continuousEntries.forEach((entry) => state.continuousImageObserver.observe(entry.figure));
+}
+
+function currentContinuousIndex() {
+  if (!state.continuousEntries.length) return 0;
+  const readingLine = elements.continuousScroll.scrollTop + elements.continuousScroll.clientHeight * 0.34;
+  let low = 0;
+  let high = state.continuousEntries.length - 1;
+  let result = 0;
+  while (low <= high) {
+    const middle = Math.floor((low + high) / 2);
+    if (state.continuousEntries[middle].figure.offsetTop <= readingLine) {
+      result = middle;
+      low = middle + 1;
+    } else {
+      high = middle - 1;
+    }
+  }
+  return result;
+}
+
+function commitContinuousIndex(index) {
+  if (!state.pages[index]) return;
+  for (let nearby = Math.max(0, index - 3); nearby <= Math.min(state.pages.length - 1, index + 3); nearby += 1) {
+    hydrateContinuousImage(nearby);
+  }
+  releaseDistantContinuousImages(index);
+  if (index === state.index) return;
+  state.index = index;
+  updateContinuousSelection(index);
+  updatePageUi({ centerThumbnail: false, smoothThumbnail: false });
+  if (state.continuousSettleTimer != null) window.clearTimeout(state.continuousSettleTimer);
+  state.continuousSettleTimer = window.setTimeout(() => {
+    state.continuousSettleTimer = null;
+    if (state.mode === 'single') centerThumbnail(state.index, { smooth: false });
+  }, 180);
+}
+
+function scheduleContinuousPageSync() {
+  if (state.continuousScrollFrame != null || state.mode !== 'single' || elements.continuousReader.hidden) return;
+  state.continuousScrollFrame = window.requestAnimationFrame(() => {
+    state.continuousScrollFrame = null;
+    const observedIndex = currentContinuousIndex();
+    if (state.continuousTargetIndex != null && observedIndex !== state.continuousTargetIndex) return;
+    if (observedIndex === state.continuousTargetIndex) state.continuousTargetIndex = null;
+    commitContinuousIndex(observedIndex);
+  });
+}
+
+function cancelContinuousTarget() {
+  if (state.continuousTargetIndex == null) return;
+  state.continuousTargetIndex = null;
+  scheduleContinuousPageSync();
+}
+
+function scrollToContinuousPage(index, { behavior } = {}) {
+  const entry = state.continuousEntries[index];
+  if (!entry || elements.continuousReader.hidden) return;
+  const distance = Math.abs(index - currentContinuousIndex());
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const scrollBehavior = behavior || (!reducedMotion && distance <= 4 ? 'smooth' : 'auto');
+  state.continuousTargetIndex = index;
+  updateContinuousSelection(index);
+  for (let nearby = Math.max(0, index - 2); nearby <= Math.min(state.pages.length - 1, index + 2); nearby += 1) {
+    hydrateContinuousImage(nearby);
+  }
+  releaseDistantContinuousImages(index);
+  elements.continuousScroll.scrollTo({
+    top: Math.max(0, entry.figure.offsetTop - 16),
+    behavior: scrollBehavior,
+  });
+  window.setTimeout(() => {
+    if (state.continuousTargetIndex === index) cancelContinuousTarget();
+  }, scrollBehavior === 'smooth' ? 800 : 0);
+}
+
+function activateContinuousReader(index, { behavior } = {}) {
+  if (elements.continuousReader.hidden) return;
+  window.requestAnimationFrame(() => {
+    scrollToContinuousPage(index, { behavior });
+    if (!state.continuousReady) {
+      observeContinuousImages();
+      state.continuousReady = true;
+    }
+  });
+}
+
+function updateReaderSurface() {
+  const panelOpen = Boolean(state.tify && ['info', 'export'].includes(textValue(state.tify.options?.view)));
+  const continuousActive = state.mode === 'single' && !panelOpen;
+  const tifyActive = Boolean(state.tify && (state.mode === 'spread' || panelOpen));
+  const fallbackActive = !state.tify && state.mode === 'spread' && !panelOpen;
+  elements.continuousReader.hidden = !continuousActive;
+  elements.tify.hidden = !tifyActive;
+  elements.fallback.hidden = !fallbackActive;
+  elements.continuousReader.setAttribute('aria-hidden', String(!continuousActive));
+  elements.tify.setAttribute('aria-hidden', String(!tifyActive));
+  elements.fallback.setAttribute('aria-hidden', String(!fallbackActive));
+  if (continuousActive && !state.continuousReady) activateContinuousReader(state.index, { behavior: 'auto' });
+  if (tifyActive) {
+    window.requestAnimationFrame(() => {
+      state.tify?.viewer?.viewport?.resize?.();
+      state.tify?.viewer?.viewport?.applyConstraints?.();
+    });
+  }
+}
+
 function renderFallback() {
   const indices = currentSpreadIndices();
   const spreadPages = spreadPageNumbers();
@@ -806,6 +1104,28 @@ function applyFallbackZoom() {
   elements.resetZoom.textContent = state.zoom === 1 ? 'Fit' : `${Math.round(state.zoom * 100)}%`;
 }
 
+function applyContinuousZoom({ restorePage = false } = {}) {
+  const percentage = Math.round(state.zoom * 100);
+  if (state.zoom === 1) {
+    elements.continuousPages.style.removeProperty('width');
+    elements.continuousPages.style.removeProperty('max-width');
+    elements.continuousPages.removeAttribute('data-zoomed');
+  } else {
+    elements.continuousPages.style.width = `${percentage}%`;
+    elements.continuousPages.style.maxWidth = `${68 * state.zoom}rem`;
+    elements.continuousPages.dataset.zoomed = 'true';
+  }
+  elements.resetZoom.textContent = state.zoom === 1 ? 'Fit' : `${percentage}%`;
+  if (restorePage && state.mode === 'single') {
+    window.requestAnimationFrame(() => {
+      for (let index = Math.max(0, state.index - 1); index <= Math.min(state.pages.length - 1, state.index + 1); index += 1) {
+        hydrateContinuousImage(index);
+      }
+      scrollToContinuousPage(state.index, { behavior: 'auto' });
+    });
+  }
+}
+
 function updateTifyViewControls() {
   const enabled = Boolean(state.tify);
   const view = enabled ? textValue(state.tify.options?.view) : '';
@@ -825,11 +1145,14 @@ function toggleTifyView(name) {
   if (!state.tify || !['info', 'export'].includes(name)) return;
   if (elements.drawer.dataset.open === 'true') closeDrawer({ restoreFocus: false });
   const nextView = textValue(state.tify.options?.view) === name ? null : name;
+  if (nextView && state.mode === 'single') syncTifyPages();
   state.tify.setView(nextView);
   updateTifyViewControls();
+  updateReaderSurface();
+  setMobileToolsOpen(false);
 }
 
-function updatePageUi() {
+function updatePageUi({ centerThumbnail: shouldCenterThumbnail = true, smoothThumbnail = true } = {}) {
   const page = state.pages[state.index];
   if (!page) return;
   const visibleIndices = currentSpreadIndices();
@@ -846,33 +1169,52 @@ function updatePageUi() {
   updateAddress();
   updateSourceHref();
   updateActiveToc();
-  updateThumbnailRail();
+  updateThumbnailRail({ center: shouldCenterThumbnail, smooth: smoothThumbnail });
 }
 
 function syncTifyPages() {
   if (!state.tify) return;
+  state.tifyNavigationGuardUntil = window.performance.now() + 900;
   if (state.mode === 'single') {
     state.tify.toggleDoublePage?.(false);
   }
   state.tify.setPage(spreadPageNumbers());
 }
 
-function setCurrentIndex(index, { updateViewer = true, speak = true } = {}) {
+function setCurrentIndex(index, { updateViewer = true, speak = true, scrollBehavior } = {}) {
   const nextIndex = Math.max(0, Math.min(state.pages.length - 1, index));
   state.index = nextIndex;
-  if (state.tify && updateViewer) {
+  updateContinuousSelection(nextIndex);
+  if (state.mode === 'single') {
+    const panelOpen = Boolean(state.tify && ['info', 'export'].includes(textValue(state.tify.options?.view)));
+    if (state.tify && updateViewer && panelOpen) syncTifyPages();
+    updateReaderSurface();
+    if (updateViewer && !panelOpen) activateContinuousReader(nextIndex, { behavior: scrollBehavior });
+  } else if (state.tify && updateViewer) {
     syncTifyPages();
+    updateReaderSurface();
   } else if (!state.tify) {
     renderFallback();
+    updateReaderSurface();
   }
   updatePageUi();
   if (speak) announce(elements.pageStatus.textContent);
 }
 
 function setMode(mode) {
-  if (!['single', 'spread'].includes(mode) || state.mode === mode) return;
+  if (!['single', 'spread'].includes(mode)) return;
+  if (state.mode === mode) {
+    setMobileToolsOpen(false);
+    return;
+  }
+  if (state.tify && ['info', 'export'].includes(textValue(state.tify.options?.view))) state.tify.setView(null);
   state.mode = mode;
-  setCurrentIndex(state.index);
+  state.zoom = 1;
+  applyFallbackZoom();
+  applyContinuousZoom();
+  updateReaderSurface();
+  setCurrentIndex(state.index, { scrollBehavior: 'auto' });
+  setMobileToolsOpen(false);
 }
 
 function firstIndexFromQuery() {
@@ -943,11 +1285,11 @@ async function startTify() {
   });
   await Promise.race([viewer.ready, timeout(12000, 'TIFY did not become ready.')]);
   state.tify = viewer;
+  syncTifyPages();
   state.tifyPageSignature = arrayValue(state.tify.options?.pages).map(Number).join(',');
   state.tifyView = textValue(state.tify.options?.view);
-  elements.tify.hidden = false;
-  elements.fallback.hidden = true;
   window.__cmgTify = viewer;
+  updateReaderSurface();
   updatePageUi();
 
   state.tifyTimer = window.setInterval(() => {
@@ -969,21 +1311,26 @@ async function startTify() {
       state.tifyView = observedView;
       changed = true;
     }
-    if (state.pages[observedIndex] && observedIndex !== state.index) {
+    const shellOwnsNavigation = state.mode === 'single' || window.performance.now() < state.tifyNavigationGuardUntil;
+    if (!shellOwnsNavigation && state.pages[observedIndex] && observedIndex !== state.index) {
       state.index = observedIndex;
       changed = true;
     }
-    if (observedMode !== state.mode && !(state.mode === 'spread' && state.index === state.pages.length - 1)) {
+    if (!shellOwnsNavigation && observedMode !== state.mode && !(state.mode === 'spread' && state.index === state.pages.length - 1)) {
       state.mode = observedMode;
       changed = true;
     }
-    if (changed) updatePageUi();
+    if (changed) {
+      updateReaderSurface();
+      updatePageUi({ centerThumbnail: false, smoothThumbnail: false });
+    }
   }, 350);
 }
 
 function showError(error) {
   console.error(error);
   elements.loading.hidden = true;
+  elements.continuousReader.hidden = true;
   elements.fallback.hidden = true;
   elements.tify.hidden = true;
   elements.thumbnailStrip.hidden = true;
@@ -1009,6 +1356,22 @@ async function initialize() {
   state.tify = null;
   state.tifyPageSignature = '';
   state.tifyView = '';
+  state.tifyNavigationGuardUntil = 0;
+  state.continuousImageObserver?.disconnect();
+  state.continuousImageObserver = null;
+  state.continuousResizeObserver?.disconnect();
+  state.continuousResizeObserver = null;
+  if (state.continuousScrollFrame != null) window.cancelAnimationFrame(state.continuousScrollFrame);
+  state.continuousScrollFrame = null;
+  if (state.continuousSettleTimer != null) window.clearTimeout(state.continuousSettleTimer);
+  state.continuousSettleTimer = null;
+  if (state.continuousResizeTimer != null) window.clearTimeout(state.continuousResizeTimer);
+  state.continuousResizeTimer = null;
+  state.continuousEntries = [];
+  state.continuousLoadedIndices = new Set();
+  state.continuousPrimaryIndex = null;
+  state.continuousReady = false;
+  elements.continuousPages.replaceChildren();
   state.thumbnailObserver?.disconnect();
   state.thumbnailObserver = null;
   state.thumbnailEntries = [];
@@ -1021,7 +1384,9 @@ async function initialize() {
   elements.thumbnailsToggle.setAttribute('aria-label', 'Show page thumbnails');
   updateTifyViewControls();
   elements.error.hidden = true;
+  elements.continuousReader.hidden = true;
   elements.fallback.hidden = true;
+  elements.fallbackPages.replaceChildren();
   elements.tify.hidden = true;
   elements.loading.hidden = false;
   elements.loadingTitle.textContent = 'Preparing the volume';
@@ -1052,30 +1417,37 @@ async function initialize() {
 
   state.index = firstIndexFromQuery();
   state.zoom = 1;
+  applyContinuousZoom();
   applyVolumeIdentity(state.volume, state.manifest);
   state.toc = buildToc(state.volume, state.manifest);
   renderToc();
-  renderFallback();
+  renderContinuousPages();
   renderThumbnailRail();
   elements.thumbnailsToggle.disabled = false;
   setThumbnailStripOpen(state.thumbnailsOpen);
   updatePageUi();
-  elements.fallback.hidden = false;
+  updateReaderSurface();
   elements.loadingTitle.textContent = 'Opening the image reader';
   elements.loadingDetail.textContent = 'Starting the self-hosted IIIF interface…';
+  if (state.mode === 'single') {
+    elements.loading.hidden = true;
+    announce(`Opened ${elements.title.textContent}, ${elements.pageStatus.textContent}`);
+  }
 
   try {
     await startTify();
     elements.loading.hidden = true;
-    announce(`Opened ${elements.title.textContent}, ${elements.pageStatus.textContent}`);
+    updateReaderSurface();
+    if (state.mode !== 'single') announce(`Opened ${elements.title.textContent}, ${elements.pageStatus.textContent}`);
   } catch (error) {
     console.info('TIFY unavailable; continuing with the built-in reader.', error);
     elements.loading.hidden = true;
-    elements.fallback.hidden = false;
+    if (state.mode === 'spread') renderFallback();
+    updateReaderSurface();
     elements.fallbackNote.textContent = state.manifest
       ? 'Basic reader active. Full-resolution images are loaded directly from BBAW.'
       : 'Fallback record active. This volume does not currently have a complete METS-derived manifest.';
-    announce(`Opened the basic reader. ${elements.pageStatus.textContent}`);
+    if (state.mode !== 'single') announce(`Opened the basic reader. ${elements.pageStatus.textContent}`);
   }
 }
 
@@ -1085,6 +1457,11 @@ function movePage(direction) {
 }
 
 function changeZoom(factor) {
+  if (state.mode === 'single' && !['info', 'export'].includes(textValue(state.tify?.options?.view))) {
+    state.zoom = Math.max(0.75, Math.min(2.5, Math.round(state.zoom * factor * 100) / 100));
+    applyContinuousZoom({ restorePage: true });
+    return;
+  }
   if (state.tify?.viewer?.viewport) {
     state.tify.viewer.viewport.zoomBy(factor);
     state.tify.viewer.viewport.applyConstraints();
@@ -1095,6 +1472,11 @@ function changeZoom(factor) {
 }
 
 function resetZoom() {
+  if (state.mode === 'single' && !['info', 'export'].includes(textValue(state.tify?.options?.view))) {
+    state.zoom = 1;
+    applyContinuousZoom({ restorePage: true });
+    return;
+  }
   if (state.tify) {
     state.tify.resetScan(true);
     return;
@@ -1104,10 +1486,25 @@ function resetZoom() {
   applyFallbackZoom();
 }
 
+function setMobileToolsOpen(open, { restoreFocus = false } = {}) {
+  state.mobileToolsOpen = Boolean(open && mobileMedia.matches);
+  elements.secondaryTools.toggleAttribute('data-open', state.mobileToolsOpen);
+  elements.mobileToolsToggle.setAttribute('aria-expanded', String(state.mobileToolsOpen));
+  if (state.mobileToolsOpen) {
+    window.requestAnimationFrame(() => {
+      elements.secondaryTools.querySelector('button:not(:disabled), a[href], input:not(:disabled)')?.focus();
+    });
+  } else if (mobileMedia.matches && (restoreFocus || elements.secondaryTools.contains(document.activeElement))) {
+    elements.mobileToolsToggle.focus();
+  }
+}
+
 function openDrawer() {
+  setMobileToolsOpen(false);
   if (state.tify && ['info', 'export'].includes(textValue(state.tify.options?.view))) {
     state.tify.setView(null);
     updateTifyViewControls();
+    updateReaderSurface();
   }
   elements.drawer.inert = false;
   elements.drawer.setAttribute('aria-hidden', 'false');
@@ -1180,6 +1577,7 @@ elements.contents.addEventListener('click', (event) => {
 });
 elements.thumbnailsToggle.addEventListener('click', () => {
   setThumbnailStripOpen(!state.thumbnailsOpen, { smooth: true });
+  if (mobileMedia.matches) setMobileToolsOpen(false);
 });
 elements.infoToggle.addEventListener('click', () => toggleTifyView('info'));
 elements.exportToggle.addEventListener('click', () => toggleTifyView('export'));
@@ -1227,6 +1625,12 @@ elements.drawerToggle.addEventListener('click', () => {
 elements.drawerClose.addEventListener('click', () => closeDrawer());
 elements.drawerBackdrop.addEventListener('click', () => closeDrawer());
 elements.retry.addEventListener('click', initialize);
+elements.mobileToolsToggle.addEventListener('click', () => setMobileToolsOpen(!state.mobileToolsOpen));
+document.addEventListener('pointerdown', (event) => {
+  if (!state.mobileToolsOpen || elements.secondaryTools.contains(event.target) || elements.mobileToolsToggle.contains(event.target)) return;
+  setMobileToolsOpen(false);
+});
+mobileMedia.addEventListener('change', () => setMobileToolsOpen(false));
 
 elements.share.addEventListener('click', async () => {
   const title = elements.title.textContent;
@@ -1243,6 +1647,7 @@ elements.share.addEventListener('click', async () => {
 });
 
 elements.fullscreen.addEventListener('click', async () => {
+  setMobileToolsOpen(false);
   try {
     if (document.fullscreenElement) await document.exitFullscreen();
     else await document.documentElement.requestFullscreen();
@@ -1254,10 +1659,18 @@ elements.fullscreen.addEventListener('click', async () => {
 document.addEventListener('fullscreenchange', () => {
   const active = Boolean(document.fullscreenElement);
   elements.fullscreen.setAttribute('aria-label', active ? 'Exit full screen' : 'Enter full screen');
+  const label = elements.fullscreen.querySelector('.fullscreen-label');
+  if (label) label.textContent = active ? 'Exit full screen' : 'Full screen';
 });
 
 elements.tify.addEventListener('keydown', (event) => {
   if (event.target.closest('input, select, textarea, button, a')) return;
+  if (!mobileMedia.matches && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+    event.preventDefault();
+    event.stopPropagation();
+    movePage(event.key === 'ArrowLeft' ? -1 : 1);
+    return;
+  }
   const actions = {
     2: () => setThumbnailStripOpen(!state.thumbnailsOpen, { smooth: true }),
     3: () => (elements.drawer.dataset.open === 'true' ? closeDrawer() : openDrawer()),
@@ -1273,6 +1686,10 @@ elements.tify.addEventListener('keydown', (event) => {
 }, { capture: true });
 
 document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && state.mobileToolsOpen) {
+    setMobileToolsOpen(false, { restoreFocus: true });
+    return;
+  }
   if (event.key === 'Escape' && elements.drawer.dataset.open === 'true') {
     closeDrawer();
     return;
@@ -1291,18 +1708,37 @@ document.addEventListener('keydown', (event) => {
     }
     return;
   }
+  if (event.defaultPrevented) return;
   const target = event.target;
-  if (target.closest('input, select, textarea, button, a, #tify')) return;
-  if (event.key === 'ArrowLeft') movePage(-1);
-  if (event.key === 'ArrowRight') movePage(1);
-  if (event.key === '+' || event.key === '=') changeZoom(1.333);
-  if (event.key === '-') changeZoom(0.75);
-  if (event.key === '0') resetZoom();
+  if (target.closest('input, select, textarea, a, #tify')) return;
+  if (!mobileMedia.matches && event.key === 'ArrowLeft' && (!target.closest('button') || target.closest('.reader-toolbar'))) {
+    event.preventDefault();
+    movePage(-1);
+    return;
+  }
+  if (!mobileMedia.matches && event.key === 'ArrowRight' && (!target.closest('button') || target.closest('.reader-toolbar'))) {
+    event.preventDefault();
+    movePage(1);
+    return;
+  }
+  if (target.closest('button')) return;
+  if (event.key === '+' || event.key === '=') {
+    event.preventDefault();
+    changeZoom(1.333);
+  }
+  if (event.key === '-') {
+    event.preventDefault();
+    changeZoom(0.75);
+  }
+  if (event.key === '0') {
+    event.preventDefault();
+    resetZoom();
+  }
 });
 
 let swipeStart = null;
 elements.fallbackScroll.addEventListener('pointerdown', (event) => {
-  if (state.zoom <= 1.01) swipeStart = { x: event.clientX, y: event.clientY };
+  if (state.mode === 'spread' && state.zoom <= 1.01) swipeStart = { x: event.clientX, y: event.clientY };
 });
 elements.fallbackScroll.addEventListener('pointerup', (event) => {
   if (!swipeStart) return;
@@ -1312,11 +1748,20 @@ elements.fallbackScroll.addEventListener('pointerup', (event) => {
   if (Math.abs(x) > 60 && Math.abs(x) > Math.abs(y) * 1.3) movePage(x > 0 ? -1 : 1);
 });
 elements.fallbackScroll.addEventListener('pointercancel', () => { swipeStart = null; });
+elements.continuousScroll.addEventListener('scroll', scheduleContinuousPageSync, { passive: true });
+elements.continuousScroll.addEventListener('wheel', cancelContinuousTarget, { passive: true });
+elements.continuousScroll.addEventListener('pointerdown', cancelContinuousTarget, { passive: true });
+elements.continuousScroll.addEventListener('scrollend', cancelContinuousTarget, { passive: true });
 
 window.addEventListener('beforeunload', () => {
   state.controller?.abort();
   if (state.tifyTimer) window.clearInterval(state.tifyTimer);
   state.thumbnailObserver?.disconnect();
+  state.continuousImageObserver?.disconnect();
+  state.continuousResizeObserver?.disconnect();
+  if (state.continuousScrollFrame != null) window.cancelAnimationFrame(state.continuousScrollFrame);
+  if (state.continuousSettleTimer != null) window.clearTimeout(state.continuousSettleTimer);
+  if (state.continuousResizeTimer != null) window.clearTimeout(state.continuousResizeTimer);
   state.tify?.destroy?.();
 });
 

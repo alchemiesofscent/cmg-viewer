@@ -8,6 +8,11 @@
   height: 100vh;
   height: 100dvh;
   min-height: 0;
+  grid-template-areas:
+    "header"
+    "toolbar"
+    "stage"
+    "thumbnails";
   grid-template-rows: auto auto minmax(0, 1fr) auto;
 }
 
@@ -22,6 +27,7 @@
   padding: 0.55rem clamp(0.75rem, 2vw, 1.5rem);
   color: white;
   background: var(--ink);
+  grid-area: header;
 }
 
 .reader-brand {
@@ -34,10 +40,10 @@
 }
 
 .reader-brand-mark {
-  font-family: var(--serif);
+  font-family: var(--display);
   font-size: 1.45rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-weight: 720;
+  letter-spacing: -0.02em;
 }
 
 .reader-brand-label {
@@ -61,9 +67,10 @@
 }
 
 .volume-identity h1 {
-  font-family: var(--serif);
+  font-family: var(--display);
   font-size: clamp(0.98rem, 1.8vw, 1.2rem);
-  font-weight: 500;
+  font-weight: 620;
+  letter-spacing: -0.015em;
 }
 
 .volume-identity p {
@@ -108,6 +115,46 @@
   border-bottom: 1px solid #cfc8bd;
   background: #f5f0e7;
   box-shadow: 0 2px 10px rgb(0 0 0 / 15%);
+  grid-area: toolbar;
+}
+
+.reader-secondary-tools {
+  display: contents;
+}
+
+.reader-actions {
+  display: flex;
+  order: 0;
+  gap: 0.55rem;
+}
+
+.page-controls {
+  order: 1;
+}
+
+.toolbar-spacer {
+  order: 2;
+}
+
+.segmented-control {
+  order: 3;
+}
+
+.zoom-controls {
+  order: 4;
+}
+
+.fullscreen-button {
+  order: 5;
+}
+
+.mobile-tools-toggle {
+  display: none;
+  order: 6;
+}
+
+.fullscreen-label {
+  display: none;
 }
 
 .tool-button,
@@ -231,9 +278,11 @@
   background:
     radial-gradient(circle at 50% 35%, rgb(255 255 255 / 5%), transparent 48%),
     #252e32;
+  grid-area: stage;
 }
 
 #tify,
+.continuous-reader,
 .fallback-reader {
   position: absolute;
   inset: 0;
@@ -242,7 +291,10 @@
 #tify {
   --tify-color-primary: #8c3d2a;
   --tify-color-primary-dark: #6f2e20;
+  --tify-font-size: 0.875rem;
+  --tify-line-height: 1.45;
   background: #252e32;
+  font-family: var(--sans);
 }
 
 /* The catalogue shell owns the title and core reader controls. TIFY remains the
@@ -256,6 +308,110 @@
 #tify .tify-media-buttons.-controls > .tify-media-button[aria-label="Zoom out"],
 #tify .tify-media-buttons.-controls > .tify-media-button[aria-label="Reset"] {
   display: none;
+}
+
+.continuous-reader {
+  min-width: 0;
+  min-height: 0;
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 2%), transparent 22%, transparent 78%, rgb(0 0 0 / 8%)),
+    #252e32;
+}
+
+.continuous-scroll {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: clamp(0.75rem, 2.4vw, 2rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #7d898d #252e32;
+}
+
+.continuous-pages {
+  position: relative;
+  display: grid;
+  width: min(100%, 68rem);
+  align-content: start;
+  gap: clamp(0.75rem, 2.2vw, 1.6rem);
+  margin: 0 auto;
+  overflow-anchor: none;
+  transition: width 140ms ease, max-width 140ms ease;
+}
+
+.continuous-page {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  scroll-margin-block: 1rem;
+}
+
+.continuous-image-frame {
+  position: relative;
+  display: grid;
+  width: 100%;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 0.12rem;
+  background: #e8e1d6;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 34%);
+}
+
+.continuous-image-frame::before {
+  position: absolute;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: 2px solid #819095;
+  border-right-color: transparent;
+  border-radius: 50%;
+  content: "";
+  opacity: 0;
+}
+
+.continuous-image-frame[data-loading="true"]::before {
+  animation: spin 650ms linear infinite;
+  opacity: 1;
+}
+
+.continuous-image-frame img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #ece5d9;
+}
+
+.continuous-image-frame[data-image-failed="true"]::after {
+  width: min(18rem, calc(100% - 2rem));
+  color: #53656b;
+  content: "This page image could not be loaded from BBAW.";
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.continuous-page figcaption {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  max-width: calc(100% - 1rem);
+  padding: 0.28rem 0.48rem;
+  overflow: hidden;
+  border-radius: 0.2rem;
+  color: white;
+  background: rgb(19 32 38 / 82%);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.continuous-page[data-current="true"] .continuous-image-frame {
+  border-color: rgb(119 168 170 / 72%);
 }
 
 .info-toggle[aria-pressed="true"],
@@ -276,6 +432,7 @@
   color: #eef3f3;
   background: #17262d;
   box-shadow: 0 -4px 14px rgb(0 0 0 / 18%);
+  grid-area: thumbnails;
 }
 
 .thumbnail-scroller {
@@ -287,6 +444,7 @@
   scroll-padding-inline: 1rem;
   scrollbar-color: #75858a #17262d;
   scrollbar-width: auto;
+  scroll-snap-type: x proximity;
   touch-action: pan-x;
 }
 
@@ -758,88 +916,210 @@
 }
 
 @media (max-width: 58rem) {
-  .page-jump label,
+  .reader-actions .tool-button {
+    width: 2.45rem;
+    padding-inline: 0;
+  }
+
+  .reader-actions .tool-button span:last-child,
   .page-status {
     display: none;
+  }
+
+  .page-jump label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 48rem) {
+  .reader-app {
+    grid-template-areas:
+      "header"
+      "stage"
+      "thumbnails"
+      "toolbar";
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+  }
+
+  .reader-header {
+    min-height: 3.45rem;
+    gap: 0.6rem;
+    padding: 0.45rem 0.55rem;
+  }
+
+  .reader-brand {
+    padding-right: 0.6rem;
+  }
+
+  .reader-brand-label,
+  .volume-identity p,
+  .wide-label,
+  .source-action {
+    display: none;
+  }
+
+  .volume-identity h1 {
+    font-size: 0.9rem;
+    font-weight: 650;
+  }
+
+  .header-actions {
+    gap: 0.25rem;
+  }
+
+  .header-action {
+    width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .reader-toolbar {
+    position: relative;
+    z-index: 35;
+    min-height: calc(3.45rem + env(safe-area-inset-bottom));
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.38rem 0.45rem calc(0.38rem + env(safe-area-inset-bottom));
+    border-top: 1px solid #cfc8bd;
+    border-bottom: 0;
+    box-shadow: 0 -3px 14px rgb(0 0 0 / 20%);
+  }
+
+  .reader-secondary-tools {
+    position: absolute;
+    z-index: 45;
+    right: 0.5rem;
+    bottom: calc(100% + 0.45rem);
+    display: none;
+    width: min(20rem, calc(100vw - 1rem));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+    padding: 0.55rem;
+    border: 1px solid #c9c1b5;
+    border-radius: 0.45rem;
+    background: #f8f4ec;
+    box-shadow: 0 14px 38px rgb(0 0 0 / 32%);
+    max-height: calc(100dvh - 7.5rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .reader-secondary-tools[data-open="true"] {
+    display: grid;
+  }
+
+  .reader-actions {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    order: initial;
+    gap: 0.45rem;
+  }
+
+  .reader-actions .tool-button,
+  .reader-secondary-tools .fullscreen-button {
+    width: 100%;
+    min-height: 2.75rem;
+    padding-inline: 0.65rem;
+  }
+
+  .reader-actions .tool-button span:last-child {
+    display: inline;
+  }
+
+  .reader-secondary-tools .segmented-control,
+  .reader-secondary-tools .zoom-controls {
+    display: flex;
+    width: 100%;
+    grid-column: 1 / -1;
+    order: initial;
+  }
+
+  .reader-secondary-tools .segmented-control button,
+  .reader-secondary-tools .zoom-controls button {
+    min-height: 2.75rem;
+    flex: 1 1 0;
+  }
+
+  .reader-secondary-tools .fullscreen-button {
+    display: inline-flex;
+    grid-column: 1 / -1;
+    order: initial;
+  }
+
+  .reader-secondary-tools .fullscreen-label {
+    display: inline;
   }
 
   .toolbar-spacer {
     display: none;
   }
 
-  .reader-toolbar {
-    justify-content: space-between;
-  }
-
-  .contents-toggle span:last-child,
-  .thumbnails-toggle span:last-child,
-  .info-toggle span:last-child,
-  .export-toggle span:last-child,
-  .reset-zoom,
-  .fullscreen-button {
-    display: none;
-  }
-}
-
-@media (max-width: 40rem) {
-  .reader-header {
-    min-height: 3.7rem;
-    gap: 0.65rem;
-  }
-
-  .reader-brand {
-    padding-right: 0.65rem;
-  }
-
-  .reader-brand-label,
-  .volume-identity p,
-  .wide-label {
-    display: none;
-  }
-
-  .header-action {
-    width: 2.25rem;
-    padding: 0;
+  .page-controls {
+    min-width: 0;
+    flex: 1 1 auto;
     justify-content: center;
-  }
-
-  .reader-toolbar {
-    min-height: 3.25rem;
-    gap: 0.25rem;
-    padding: 0.35rem;
+    order: 0;
   }
 
   .tool-button,
   .segmented-control button {
-    min-height: 2.4rem;
-    padding-inline: 0.5rem;
+    min-height: 2.75rem;
   }
 
   .tool-button.square {
-    width: 2.4rem;
-    flex-basis: 2.4rem;
+    width: 2.75rem;
+    flex-basis: 2.75rem;
+    font-size: 1.1rem;
+  }
+
+  .reader-secondary-tools .tool-button.fullscreen-button {
+    width: 100%;
+    flex-basis: auto;
   }
 
   .page-jump input {
-    width: 3.7rem;
-    min-height: 2.4rem;
+    width: 4.2rem;
+    min-height: 2.75rem;
+    border-color: #afa69a;
+    font-weight: 680;
   }
 
-  .segmented-control button {
-    width: 2.4rem;
-    overflow: hidden;
-    font-size: 0;
+  .mobile-tools-toggle {
+    display: inline-flex;
+    width: 2.75rem;
+    flex: 0 0 2.75rem;
+    order: 1;
+    padding: 0;
+    letter-spacing: 0.08em;
   }
 
-  .segmented-control button::after {
-    font-size: 0.74rem;
+  .mobile-tools-toggle[aria-expanded="true"] {
+    border-color: var(--teal);
+    color: white;
+    background: var(--teal);
   }
 
-  #single-page::after { content: "1"; }
-  #two-pages::after { content: "2"; }
+  .continuous-scroll {
+    padding: 0.45rem;
+  }
 
-  .zoom-controls {
-    display: none;
+  .continuous-pages {
+    gap: 0.65rem;
+  }
+
+  .continuous-page figcaption {
+    right: 0.35rem;
+    bottom: 0.35rem;
+    padding: 0.22rem 0.38rem;
+    font-size: 0.64rem;
   }
 
   .fallback-scroll {
@@ -859,22 +1139,22 @@
   }
 
   .thumbnail-strip {
-    min-height: 6.15rem;
+    min-height: 5.45rem;
   }
 
   .thumbnail-scroller {
-    padding: 0.35rem 0.45rem calc(0.35rem + env(safe-area-inset-bottom));
+    padding: 0.3rem 0.45rem;
   }
 
   .thumbnail-list {
-    height: 5.45rem;
+    height: 4.85rem;
     gap: 0.3rem;
   }
 
   .thumbnail-button {
-    width: 4rem;
-    height: 5.45rem;
-    padding: 0.2rem;
+    width: 3.7rem;
+    height: 4.85rem;
+    padding: 0.18rem;
   }
 }
 
@@ -899,25 +1179,23 @@
   }
 
   .reader-brand-mark {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
   }
 
   .volume-identity h1 {
-    font-size: 0.85rem;
+    font-size: 0.82rem;
   }
 
-  #cmg-source {
-    display: none;
+  .page-controls {
+    gap: 0.22rem;
+  }
+
+  .page-jump input {
+    width: 3.45rem;
   }
 
   .reader-toolbar {
-    justify-content: flex-start;
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-    scrollbar-width: none;
-  }
-
-  .reader-toolbar::-webkit-scrollbar {
-    display: none;
+    gap: 0.25rem;
+    padding-inline: 0.3rem;
   }
 }

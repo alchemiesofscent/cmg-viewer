@@ -13,11 +13,13 @@ top-level Roman series division while retaining the complete bibliographic
 shelfmark on each work, and the author menu connects reviewed CMG divisions
 with the broader indexed-author list.
 
-The reader provides logical contents, stable page-image URLs, single and
-facing-page layouts, full-resolution zoom, and a keyboard-accessible thumbnail
-rail that loads only nearby previews. A single toolbar owns navigation and
-viewer actions; source page labels are preferred over physical scan numbers in
-the visible interface, with page position used when no distinct label exists.
+The reader provides logical contents, stable page-image URLs, a lazy-loaded
+continuous page stream, facing-page layouts, full-resolution zoom, and a
+keyboard-accessible thumbnail rail that loads only nearby previews. A single
+toolbar owns navigation and viewer actions; on phones it becomes a compact
+bottom bar with the same controls in one disclosure. Source page labels are
+preferred over physical scan numbers in the visible interface, with page
+position used when no distinct label exists.
 
 The reviewed live census currently contains 218 work-level entries mapped to
 143 physical viewers and 37,756 available scans. Of those viewers, 117 use

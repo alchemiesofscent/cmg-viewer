@@ -202,6 +202,34 @@ def validate_volume(
         f"Viewer route has no thumbnail rail: {route_path}",
     )
     require(
+        'id="continuous-reader"' in route_text
+        and 'id="continuous-scroll"' in route_text
+        and 'id="continuous-pages"' in route_text
+        and 'aria-label="Continuous page view"' in route_text,
+        f"Viewer route has no accessible continuous reader: {route_path}",
+    )
+    require(
+        'id="mobile-tools-toggle"' in route_text
+        and 'id="reader-secondary-tools"' in route_text,
+        f"Viewer route has no compact mobile tool disclosure: {route_path}",
+    )
+    for control_id in (
+        "previous-page",
+        "next-page",
+        "page-order",
+        "contents-toggle",
+        "thumbnails-toggle",
+        "info-toggle",
+        "export-toggle",
+        "single-page",
+        "two-pages",
+        "fullscreen",
+    ):
+        require(
+            route_text.count(f'id="{control_id}"') == 1,
+            f"Viewer route does not have exactly one {control_id} control: {route_path}",
+        )
+    require(
         'aria-label="Page thumbnails"' in route_text
         and 'thumbnail-summary' not in route_text
         and '<strong>Scans</strong>' not in route_text,
