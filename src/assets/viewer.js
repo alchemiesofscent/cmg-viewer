@@ -1569,7 +1569,11 @@ function resetZoom() {
 
 function setMobileToolsOpen(open, { restoreFocus = false } = {}) {
   state.mobileToolsOpen = Boolean(open && mobileMedia.matches);
-  elements.secondaryTools.toggleAttribute('data-open', state.mobileToolsOpen);
+  if (state.mobileToolsOpen) {
+    elements.secondaryTools.dataset.open = 'true';
+  } else {
+    elements.secondaryTools.removeAttribute('data-open');
+  }
   elements.mobileToolsToggle.setAttribute('aria-expanded', String(state.mobileToolsOpen));
   if (state.mobileToolsOpen) {
     window.requestAnimationFrame(() => {
