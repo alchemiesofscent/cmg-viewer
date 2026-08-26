@@ -1329,12 +1329,18 @@ async function startTify(generation = state.generation) {
       preserveViewport: true,
     },
   });
-  await Promise.race([viewer.ready, timeout(12000, 'TIFY did not become ready.')]);
+  try {
+    await Promise.race([viewer.ready, timeout(12000, 'TIFY did not become ready.')]);
+  } catch (error) {
+    viewer.destroy?.();
+    throw error;
+  }
   if (generation !== state.generation) {
     viewer.destroy?.();
     throw new Error('A newer reader load replaced this IIIF viewer.');
   }
   state.tify = viewer;
+  elements.fallbackPages.replaceChildren();
   syncTifyPages();
   state.tifyPageSignature = arrayValue(state.tify.options?.pages).map(Number).join(',');
   state.tifyView = textValue(state.tify.options?.view);
