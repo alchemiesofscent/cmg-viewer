@@ -31,6 +31,8 @@ const VOLUME_URL = new URL(`data/volumes/${encodeURIComponent(volumeId)}.json`, 
 const MANIFEST_URL = new URL(`iiif/${encodeURIComponent(volumeId)}/manifest.json`, BASE_URL);
 
 const elements = {
+  readerApp: document.querySelector('.reader-app'),
+  skipLink: document.querySelector('.skip-link'),
   catalogueLink: document.querySelector('#catalogue-link'),
   title: document.querySelector('#volume-title'),
   meta: document.querySelector('#volume-meta'),
@@ -65,6 +67,7 @@ const elements = {
   zoomIn: document.querySelector('#zoom-in'),
   resetZoom: document.querySelector('#reset-zoom'),
   fullscreen: document.querySelector('#fullscreen'),
+  fullscreenNotice: document.querySelector('#fullscreen-notice'),
   drawer: document.querySelector('#contents-drawer'),
   drawerToggle: document.querySelector('#contents-toggle'),
   drawerClose: document.querySelector('#contents-close'),
@@ -129,6 +132,14 @@ const state = {
   continuousReady: false,
   continuousPrimaryIndex: null,
   mobileToolsOpen: false,
+  fullscreenNativeFailed: false,
+  fullscreenRequestPending: false,
+  fullscreenRequestKind: '',
+  fullscreenRequestToken: 0,
+  fullscreenLayoutTimer: null,
+  fullscreenTransitionToken: 0,
+  fullscreenRestoreIndex: null,
+  fullscreenNoticeTimer: null,
   sourceUrl: '',
   controller: null,
 };
@@ -2045,6 +2056,287 @@ function resetZoom() {
   applyFallbackZoom();
 }
 
+function nativeFullscreenElement() {
+  return document.fullscreenElement
+    || document.webkitFullscreenElement
+    || document.mozFullScreenElement
+    || document.msFullscreenElement
+    || null;
+}
+
+function fullscreenMethod(owner, names) {
+  for (const name of names) {
+    if (typeof owner?.[name] === 'function') return owner[name];
+  }
+  return null;
+}
+
+function nativeFullscreenRequest({ ignoreFailure = false } = {}) {
+  if (state.fullscreenNativeFailed && !ignoreFailure) return null;
+  const standard = fullscreenMethod(elements.readerApp, ['requestFullscreen']);
+  if (standard && document.fullscreenEnabled !== false) return standard;
+  const webkit = fullscreenMethod(elements.readerApp, ['webkitRequestFullscreen', 'webkitRequestFullScreen']);
+  if (webkit && document.webkitFullscreenEnabled !== false) return webkit;
+  const legacy = fullscreenMethod(elements.readerApp, ['mozRequestFullScreen', 'msRequestFullscreen']);
+  return legacy;
+}
+
+function nativeFullscreenExit() {
+  return fullscreenMethod(document, [
+    'exitFullscreen',
+    'webkitExitFullscreen',
+    'webkitCancelFullScreen',
+    'mozCancelFullScreen',
+    'msExitFullscreen',
+  ]);
+}
+
+function focusFullscreenActive() {
+  return elements.readerApp.dataset.fullscreenMode === 'focus';
+}
+
+function hideFullscreenNotice() {
+  if (state.fullscreenNoticeTimer != null) window.clearTimeout(state.fullscreenNoticeTimer);
+  state.fullscreenNoticeTimer = null;
+  elements.fullscreenNotice.hidden = true;
+}
+
+function showFullscreenNotice(message) {
+  hideFullscreenNotice();
+  elements.fullscreenNotice.textContent = message;
+  elements.fullscreenNotice.hidden = false;
+  state.fullscreenNoticeTimer = window.setTimeout(hideFullscreenNotice, 3200);
+}
+
+function beginFullscreenLayoutTransition() {
+  cancelContinuousTouchZoom();
+  state.fullscreenTransitionToken += 1;
+  state.fullscreenRestoreIndex = state.index;
+  continuousTouchZoom.suppressSync = true;
+  if (state.continuousScrollFrame != null) window.cancelAnimationFrame(state.continuousScrollFrame);
+  state.continuousScrollFrame = null;
+  const addressUpdatePending = state.continuousSettleTimer != null;
+  if (state.continuousSettleTimer != null) window.clearTimeout(state.continuousSettleTimer);
+  state.continuousSettleTimer = null;
+  if (addressUpdatePending) updateAddress();
+  state.continuousTargetIndex = null;
+}
+
+function refreshFullscreenLayout() {
+  if (state.fullscreenLayoutTimer != null) window.clearTimeout(state.fullscreenLayoutTimer);
+  const token = state.fullscreenTransitionToken;
+  const restoreIndex = state.fullscreenRestoreIndex ?? state.index;
+  state.fullscreenLayoutTimer = window.setTimeout(() => {
+    state.fullscreenLayoutTimer = null;
+    if (token !== state.fullscreenTransitionToken) return;
+    if (state.mode === 'single' && !elements.continuousReader.hidden) {
+      scrollToContinuousPage(restoreIndex, { behavior: 'auto' });
+    }
+    state.tify?.viewer?.viewport?.resize?.();
+    state.tify?.viewer?.viewport?.applyConstraints?.();
+    window.requestAnimationFrame(() => {
+      if (token !== state.fullscreenTransitionToken) return;
+      state.fullscreenRestoreIndex = null;
+      continuousTouchZoom.suppressSync = false;
+    });
+  }, 140);
+}
+
+function syncFullscreenUi() {
+  const nativeActive = Boolean(nativeFullscreenElement());
+  if (nativeActive) {
+    state.fullscreenNativeFailed = false;
+    elements.readerApp.dataset.fullscreenMode = 'native';
+    document.documentElement.removeAttribute('data-reader-fullscreen');
+  } else if (elements.readerApp.dataset.fullscreenMode === 'native') {
+    elements.readerApp.removeAttribute('data-fullscreen-mode');
+  }
+  const focusActive = focusFullscreenActive();
+  elements.skipLink.inert = focusActive;
+  const active = nativeActive || focusActive;
+  const nativeAvailable = Boolean(nativeFullscreenRequest());
+  const ariaLabel = nativeActive
+    ? 'Exit full screen'
+    : (focusActive
+      ? 'Exit focus view'
+      : (nativeAvailable ? 'Enter full screen' : 'Enter focus view'));
+  const visibleLabel = nativeActive
+    ? 'Exit full screen'
+    : (focusActive ? 'Exit focus view' : (nativeAvailable ? 'Full screen' : 'Focus view'));
+  elements.fullscreen.setAttribute('aria-label', ariaLabel);
+  elements.fullscreen.setAttribute('aria-pressed', String(active));
+  if (state.fullscreenRequestPending) elements.fullscreen.setAttribute('aria-busy', 'true');
+  else elements.fullscreen.removeAttribute('aria-busy');
+  elements.fullscreen.title = ariaLabel;
+  const label = elements.fullscreen.querySelector('.fullscreen-label');
+  if (label) label.textContent = visibleLabel;
+}
+
+function setFocusFullscreen(active, { notify = true } = {}) {
+  if (active === focusFullscreenActive()) {
+    syncFullscreenUi();
+    refreshFullscreenLayout();
+    return;
+  }
+  if (active) {
+    elements.readerApp.dataset.fullscreenMode = 'focus';
+    document.documentElement.dataset.readerFullscreen = 'focus';
+  } else {
+    state.fullscreenNativeFailed = !nativeFullscreenRequest({ ignoreFailure: true });
+    elements.readerApp.removeAttribute('data-fullscreen-mode');
+    document.documentElement.removeAttribute('data-reader-fullscreen');
+  }
+  syncFullscreenUi();
+  refreshFullscreenLayout();
+  if (!notify) return;
+  if (active) {
+    const exitLocation = mobileMedia.matches ? 'Exit from More.' : 'Use the toolbar to exit.';
+    showFullscreenNotice(`Focus view active. Browser controls remain visible. ${exitLocation}`);
+  } else {
+    hideFullscreenNotice();
+    announce('Focus view closed.');
+  }
+}
+
+function waitForNativeFullscreen(result) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const events = ['fullscreenchange', 'webkitfullscreenchange'];
+    const errorEvents = ['fullscreenerror', 'webkitfullscreenerror'];
+    const cleanup = () => {
+      for (const eventName of events) document.removeEventListener(eventName, handleChange);
+      for (const eventName of errorEvents) document.removeEventListener(eventName, handleError);
+      window.clearTimeout(timer);
+    };
+    const finish = (active) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(active);
+    };
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+    const handleChange = () => {
+      if (nativeFullscreenElement()) finish(true);
+    };
+    const handleError = () => finish(false);
+    for (const eventName of events) document.addEventListener(eventName, handleChange);
+    for (const eventName of errorEvents) document.addEventListener(eventName, handleError);
+    const timer = window.setTimeout(() => finish(Boolean(nativeFullscreenElement())), 1500);
+    if (result && typeof result.then === 'function') {
+      Promise.resolve(result).then(() => {
+        if (nativeFullscreenElement()) finish(true);
+      }, fail);
+    }
+    if (nativeFullscreenElement()) finish(true);
+  });
+}
+
+async function enterReaderFullscreen() {
+  if (state.fullscreenRequestPending) return;
+  const requestToken = ++state.fullscreenRequestToken;
+  beginFullscreenLayoutTransition();
+  const request = nativeFullscreenRequest();
+  if (!request) {
+    state.fullscreenNativeFailed = true;
+    setMobileToolsOpen(false);
+    setFocusFullscreen(true);
+    return;
+  }
+
+  state.fullscreenRequestPending = true;
+  state.fullscreenRequestKind = 'enter';
+  syncFullscreenUi();
+  try {
+    const result = request.call(elements.readerApp);
+    setMobileToolsOpen(false);
+    const active = await waitForNativeFullscreen(result);
+    if (requestToken !== state.fullscreenRequestToken) return;
+    state.fullscreenRequestPending = false;
+    state.fullscreenRequestKind = '';
+    if (!active) {
+      state.fullscreenNativeFailed = true;
+      if (!focusFullscreenActive()) setFocusFullscreen(true);
+      return;
+    }
+    syncFullscreenUi();
+    refreshFullscreenLayout();
+  } catch {
+    if (requestToken !== state.fullscreenRequestToken) return;
+    state.fullscreenRequestPending = false;
+    state.fullscreenRequestKind = '';
+    state.fullscreenNativeFailed = true;
+    setMobileToolsOpen(false);
+    if (!focusFullscreenActive()) setFocusFullscreen(true);
+  }
+}
+
+async function exitReaderFullscreen() {
+  if (state.fullscreenRequestPending) return;
+  const requestToken = ++state.fullscreenRequestToken;
+  beginFullscreenLayoutTransition();
+  if (focusFullscreenActive() && !nativeFullscreenElement()) {
+    setMobileToolsOpen(false);
+    setFocusFullscreen(false);
+    return;
+  }
+  const exit = nativeFullscreenExit();
+  if (!exit) {
+    setMobileToolsOpen(false);
+    announce('Use the browser controls to exit full screen.');
+    refreshFullscreenLayout();
+    return;
+  }
+  state.fullscreenRequestPending = true;
+  state.fullscreenRequestKind = 'exit';
+  syncFullscreenUi();
+  try {
+    const result = exit.call(document);
+    setMobileToolsOpen(false);
+    if (result && typeof result.then === 'function') await result;
+    if (requestToken !== state.fullscreenRequestToken) return;
+    state.fullscreenRequestPending = false;
+    state.fullscreenRequestKind = '';
+    syncFullscreenUi();
+    refreshFullscreenLayout();
+  } catch (error) {
+    if (requestToken !== state.fullscreenRequestToken) return;
+    state.fullscreenRequestPending = false;
+    state.fullscreenRequestKind = '';
+    syncFullscreenUi();
+    announce(`Full screen could not be closed: ${error.message}`);
+    refreshFullscreenLayout();
+  }
+}
+
+function handleNativeFullscreenChange() {
+  if (state.fullscreenRestoreIndex == null) beginFullscreenLayoutTransition();
+  state.fullscreenRequestPending = false;
+  state.fullscreenRequestKind = '';
+  syncFullscreenUi();
+  refreshFullscreenLayout();
+}
+
+function handleNativeFullscreenError() {
+  if (!state.fullscreenRequestPending || nativeFullscreenElement()) return;
+  const requestKind = state.fullscreenRequestKind;
+  state.fullscreenRequestPending = false;
+  state.fullscreenRequestKind = '';
+  if (requestKind !== 'enter') {
+    syncFullscreenUi();
+    refreshFullscreenLayout();
+    announce('Full screen could not be closed.');
+    return;
+  }
+  state.fullscreenNativeFailed = true;
+  setMobileToolsOpen(false);
+  if (!focusFullscreenActive()) setFocusFullscreen(true);
+}
+
 function setMobileToolsOpen(open, { restoreFocus = false } = {}) {
   state.mobileToolsOpen = Boolean(open && mobileMedia.matches);
   if (state.mobileToolsOpen) {
@@ -2213,21 +2505,14 @@ elements.share.addEventListener('click', async () => {
 });
 
 elements.fullscreen.addEventListener('click', async () => {
-  setMobileToolsOpen(false);
-  try {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else await document.documentElement.requestFullscreen();
-  } catch (error) {
-    announce(`Full screen could not be opened: ${error.message}`);
-  }
+  if (nativeFullscreenElement() || focusFullscreenActive()) await exitReaderFullscreen();
+  else await enterReaderFullscreen();
 });
 
-document.addEventListener('fullscreenchange', () => {
-  const active = Boolean(document.fullscreenElement);
-  elements.fullscreen.setAttribute('aria-label', active ? 'Exit full screen' : 'Enter full screen');
-  const label = elements.fullscreen.querySelector('.fullscreen-label');
-  if (label) label.textContent = active ? 'Exit full screen' : 'Full screen';
-});
+document.addEventListener('fullscreenchange', handleNativeFullscreenChange);
+document.addEventListener('webkitfullscreenchange', handleNativeFullscreenChange);
+document.addEventListener('fullscreenerror', handleNativeFullscreenError);
+document.addEventListener('webkitfullscreenerror', handleNativeFullscreenError);
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) cancelContinuousTouchZoom();
@@ -2262,6 +2547,11 @@ document.addEventListener('keydown', (event) => {
   }
   if (event.key === 'Escape' && elements.drawer.dataset.open === 'true') {
     closeDrawer();
+    return;
+  }
+  if (event.key === 'Escape' && focusFullscreenActive()) {
+    event.preventDefault();
+    void exitReaderFullscreen();
     return;
   }
   if (event.key === 'Tab' && elements.drawer.dataset.open === 'true') {
@@ -2332,6 +2622,22 @@ elements.continuousReader.addEventListener('touchstart', preventNativeContinuous
 elements.continuousReader.addEventListener('touchmove', preventNativeContinuousTouchGesture, { passive: false });
 elements.continuousScroll.addEventListener('scrollend', cancelContinuousTarget, { passive: true });
 
+window.addEventListener('pagehide', () => {
+  state.fullscreenRequestToken += 1;
+  hideFullscreenNotice();
+  if (state.fullscreenLayoutTimer != null) window.clearTimeout(state.fullscreenLayoutTimer);
+  state.fullscreenLayoutTimer = null;
+  state.fullscreenRestoreIndex = null;
+  state.fullscreenRequestPending = false;
+  state.fullscreenRequestKind = '';
+  continuousTouchZoom.suppressSync = false;
+  elements.readerApp.removeAttribute('data-fullscreen-mode');
+  document.documentElement.removeAttribute('data-reader-fullscreen');
+  elements.skipLink.inert = false;
+});
+
+window.addEventListener('pageshow', syncFullscreenUi);
+
 window.addEventListener('beforeunload', () => {
   cancelContinuousTouchZoom();
   for (const index of [...state.continuousLoadedIndices]) releaseContinuousImage(index);
@@ -2345,7 +2651,10 @@ window.addEventListener('beforeunload', () => {
   if (state.continuousResizeTimer != null) window.clearTimeout(state.continuousResizeTimer);
   if (continuousTouchZoom.hudTimer != null) window.clearTimeout(continuousTouchZoom.hudTimer);
   if (continuousTouchZoom.hydrationTimer != null) window.clearTimeout(continuousTouchZoom.hydrationTimer);
+  if (state.fullscreenLayoutTimer != null) window.clearTimeout(state.fullscreenLayoutTimer);
+  if (state.fullscreenNoticeTimer != null) window.clearTimeout(state.fullscreenNoticeTimer);
   state.tify?.destroy?.();
 });
 
+syncFullscreenUi();
 initialize();

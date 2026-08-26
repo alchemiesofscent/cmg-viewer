@@ -213,8 +213,13 @@ def validate_volume(
     )
     require(
         'id="mobile-tools-toggle"' in route_text
-        and 'id="reader-secondary-tools"' in route_text,
+        and 'id="reader-secondary-tools"' in route_text
+        and 'id="fullscreen-notice"' in route_text,
         f"Viewer route has no compact mobile tool disclosure: {route_path}",
+    )
+    require(
+        re.search(r'<button[^>]+id="fullscreen"[^>]+aria-pressed="false"', route_text) is not None,
+        f"Viewer full-screen control has no pressed state: {route_path}",
     )
     for control_id in (
         "previous-page",
@@ -415,6 +420,15 @@ def validate_artifact(
         dist / "assets" / "vendor" / "tify" / "LICENSE",
     ):
         require(path.is_file(), f"Required artifact file is missing: {path}")
+
+    viewer_script = (dist / "assets" / "viewer.js").read_text(encoding="utf-8")
+    viewer_styles = (dist / "assets" / "viewer.css").read_text(encoding="utf-8")
+    require(
+        "webkitRequestFullscreen" in viewer_script
+        and "setFocusFullscreen" in viewer_script
+        and 'data-fullscreen-mode' in viewer_styles,
+        "Viewer has no mobile-safe full-screen fallback",
+    )
 
     catalogue_route_text = (dist / "index.html").read_text(encoding="utf-8")
     header_start = catalogue_route_text.find('<header class="site-header">')

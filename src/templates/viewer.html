@@ -69,7 +69,7 @@
           <button class="tool-button square" id="zoom-in" type="button" aria-label="Zoom in">+</button>
         </div>
 
-        <button class="tool-button square fullscreen-button" id="fullscreen" type="button" aria-label="Enter full screen"><span aria-hidden="true">⛶</span><span class="fullscreen-label">Full screen</span></button>
+        <button class="tool-button square fullscreen-button" id="fullscreen" type="button" aria-label="Enter full screen" aria-pressed="false"><span aria-hidden="true">⛶</span><span class="fullscreen-label">Full screen</span></button>
       </div>
 
       <div class="page-controls" aria-label="Page navigation">
@@ -87,6 +87,8 @@
         <span aria-hidden="true">•••</span><span class="sr-only">More reader tools</span>
       </button>
     </nav>
+
+    <div class="fullscreen-notice" id="fullscreen-notice" role="status" aria-live="polite" hidden></div>
 
     <main class="reader-stage" id="reader-stage" tabindex="-1" aria-label="Digitized volume">
       <section class="continuous-reader" id="continuous-reader" aria-label="Continuous page view" hidden>
