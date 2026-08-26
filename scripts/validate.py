@@ -205,6 +205,9 @@ def validate_volume(
         'id="continuous-reader"' in route_text
         and 'id="continuous-scroll"' in route_text
         and 'id="continuous-pages"' in route_text
+        and 'id="double-tap-catcher"' in route_text
+        and 'id="gesture-zoom-hud"' in route_text
+        and 'aria-describedby="continuous-gesture-help"' in route_text
         and 'aria-label="Continuous page view"' in route_text,
         f"Viewer route has no accessible continuous reader: {route_path}",
     )
@@ -405,6 +408,7 @@ def validate_artifact(
         dist / "data" / "sync-report.json",
         dist / "iiif" / "collection.json",
         dist / "assets" / "viewer.js",
+        dist / "assets" / "viewer-gesture-math.js",
         dist / "assets" / "viewer.css",
         dist / "assets" / "vendor" / "tify" / "tify.js",
         dist / "assets" / "vendor" / "tify" / "tify.css",

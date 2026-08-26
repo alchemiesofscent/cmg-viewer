@@ -1,3 +1,11 @@
+import {
+  clampZoom,
+  dragZoom,
+  isSecondTap,
+  pinchZoom,
+  pointDistance,
+} from './viewer-gesture-math.js';
+
 const PROJECT_PATH = '/cmg-viewer/';
 
 function projectBase() {
@@ -32,6 +40,8 @@ const elements = {
   continuousReader: document.querySelector('#continuous-reader'),
   continuousScroll: document.querySelector('#continuous-scroll'),
   continuousPages: document.querySelector('#continuous-pages'),
+  doubleTapCatcher: document.querySelector('#double-tap-catcher'),
+  zoomHud: document.querySelector('#gesture-zoom-hud'),
   tify: document.querySelector('#tify'),
   fallback: document.querySelector('#fallback-reader'),
   fallbackScroll: document.querySelector('#fallback-scroll'),
@@ -73,6 +83,13 @@ const elements = {
 };
 
 const mobileMedia = window.matchMedia('(max-width: 48rem)');
+const CONTINUOUS_ZOOM_MIN = 0.75;
+const CONTINUOUS_ZOOM_MAX = 2.5;
+const DOUBLE_TAP_DELAY = 300;
+const TAP_MAX_DURATION = 250;
+const TAP_MAX_TRAVEL = 12;
+const DOUBLE_TAP_MAX_DISTANCE = 48;
+const CONTINUOUS_IMAGE_RETRY_DELAY = 10000;
 
 const state = {
   volume: {},
@@ -114,6 +131,33 @@ const state = {
   mobileToolsOpen: false,
   sourceUrl: '',
   controller: null,
+};
+
+const continuousTouchZoom = {
+  pointers: new Map(),
+  kind: '',
+  tapCandidate: null,
+  lastTap: null,
+  armTimer: null,
+  armedFrame: null,
+  target: null,
+  anchorX: 0.5,
+  anchorY: 0.5,
+  anchorClientX: 0,
+  anchorClientY: 0,
+  targetClientX: 0,
+  targetClientY: 0,
+  startZoom: 1,
+  lastDistance: 0,
+  startY: 0,
+  lastY: 0,
+  previewZoom: 1,
+  startIndex: 0,
+  suppressSync: false,
+  moved: false,
+  previewFrame: null,
+  hudTimer: null,
+  hydrationTimer: null,
 };
 
 function textValue(value) {
@@ -817,21 +861,29 @@ function hydrateContinuousImage(index) {
   const requestedWidth = Math.ceil(renderedWidth * Math.min(window.devicePixelRatio || 1, 2));
   const pixelWidth = continuousImagePixelWidth(page, requestedWidth);
   if (entry.image && entry.pixelWidth >= pixelWidth) return;
-  if (entry.image) {
-    const previousImage = entry.image;
-    entry.image = null;
-    previousImage.removeAttribute('src');
-    previousImage.remove();
-    state.continuousLoadedIndices.delete(index);
+  if (
+    entry.image
+    && entry.failedPixelWidth === pixelWidth
+    && Date.now() - entry.failedAt < CONTINUOUS_IMAGE_RETRY_DELAY
+  ) return;
+  if (entry.pendingImage && entry.pendingPixelWidth >= pixelWidth) return;
+  if (entry.pendingImage) {
+    entry.pendingImage.removeAttribute('src');
+    entry.pendingImage.remove();
+    entry.pendingImage = null;
+    entry.pendingPixelWidth = 0;
   }
   const source = continuousImageUrl(page, pixelWidth);
   if (!source) {
-    entry.failed = true;
-    entry.frame.dataset.imageFailed = 'true';
+    if (!entry.image) {
+      entry.failed = true;
+      entry.frame.dataset.imageFailed = 'true';
+    }
     return;
   }
 
   const image = document.createElement('img');
+  let usingThumbnailFallback = false;
   const printedLabel = sourcePageLabel(page);
   image.alt = printedLabel
     ? `${pageDisplay(page, index)}, position ${index + 1} of ${state.pages.length}`
@@ -842,42 +894,71 @@ function hydrateContinuousImage(index) {
   if (page.width) image.width = page.width;
   if (page.height) image.height = page.height;
   image.addEventListener('load', () => {
-    if (entry.image === image) entry.frame.removeAttribute('data-loading');
+    if (entry.pendingImage !== image) return;
+    const previousImage = entry.image;
+    entry.pendingImage = null;
+    entry.pendingPixelWidth = 0;
+    entry.image = image;
+    entry.pixelWidth = usingThumbnailFallback ? Math.min(pixelWidth, 400) : pixelWidth;
+    entry.failedPixelWidth = usingThumbnailFallback ? pixelWidth : 0;
+    entry.failedAt = usingThumbnailFallback ? Date.now() : 0;
+    entry.failed = false;
+    entry.frame.prepend(image);
+    previousImage?.removeAttribute('src');
+    previousImage?.remove();
+    entry.frame.removeAttribute('data-loading');
+    entry.frame.removeAttribute('data-image-failed');
+    state.continuousLoadedIndices.add(index);
   }, { once: true });
   image.addEventListener('error', () => {
-    if (entry.image !== image) return;
-    if (page.thumbnail && image.src !== page.thumbnail) {
+    if (entry.pendingImage !== image) return;
+    if (!entry.image && page.thumbnail && source !== page.thumbnail && !usingThumbnailFallback) {
+      usingThumbnailFallback = true;
       image.src = page.thumbnail;
       return;
     }
-    entry.failed = true;
-    entry.frame.dataset.imageFailed = 'true';
+    entry.pendingImage = null;
+    entry.pendingPixelWidth = 0;
+    entry.failedPixelWidth = pixelWidth;
+    entry.failedAt = Date.now();
+    image.removeAttribute('src');
     image.remove();
-    entry.image = null;
-    entry.pixelWidth = 0;
-    state.continuousLoadedIndices.delete(index);
+    entry.frame.removeAttribute('data-loading');
+    if (!entry.image) {
+      entry.failed = true;
+      entry.frame.dataset.imageFailed = 'true';
+      state.continuousLoadedIndices.delete(index);
+    }
   });
-  entry.frame.dataset.loading = 'true';
-  entry.frame.prepend(image);
-  entry.image = image;
-  entry.pixelWidth = pixelWidth;
+  if (!entry.image) entry.frame.dataset.loading = 'true';
+  entry.pendingImage = image;
+  entry.pendingPixelWidth = pixelWidth;
   state.continuousLoadedIndices.add(index);
   image.src = source;
+}
+
+function releaseContinuousImage(index) {
+  const entry = state.continuousEntries[index];
+  if (!entry) return;
+  const images = [entry.image, entry.pendingImage];
+  entry.image = null;
+  entry.pixelWidth = 0;
+  entry.pendingImage = null;
+  entry.pendingPixelWidth = 0;
+  entry.failedPixelWidth = 0;
+  entry.failedAt = 0;
+  entry.frame.removeAttribute('data-loading');
+  for (const image of images) {
+    image?.removeAttribute('src');
+    image?.remove();
+  }
+  state.continuousLoadedIndices.delete(index);
 }
 
 function releaseDistantContinuousImages(activeIndex) {
   for (const index of [...state.continuousLoadedIndices]) {
     if (Math.abs(index - activeIndex) <= 8) continue;
-    const entry = state.continuousEntries[index];
-    const image = entry?.image;
-    if (entry) {
-      entry.image = null;
-      entry.pixelWidth = 0;
-      entry.frame.removeAttribute('data-loading');
-    }
-    image?.removeAttribute('src');
-    image?.remove();
-    state.continuousLoadedIndices.delete(index);
+    releaseContinuousImage(index);
   }
 }
 
@@ -896,6 +977,8 @@ function updateContinuousSelection(index) {
 }
 
 function renderContinuousPages() {
+  cancelContinuousTouchZoom();
+  for (const index of [...state.continuousLoadedIndices]) releaseContinuousImage(index);
   state.continuousImageObserver?.disconnect();
   state.continuousImageObserver = null;
   state.continuousResizeObserver?.disconnect();
@@ -929,7 +1012,17 @@ function renderContinuousPages() {
     caption.textContent = pageDisplay(page, index);
     figure.append(frame, caption);
     fragment.append(figure);
-    state.continuousEntries[index] = { figure, frame, image: null, pixelWidth: 0, failed: false };
+    state.continuousEntries[index] = {
+      figure,
+      frame,
+      image: null,
+      pixelWidth: 0,
+      pendingImage: null,
+      pendingPixelWidth: 0,
+      failedPixelWidth: 0,
+      failedAt: 0,
+      failed: false,
+    };
   });
 
   elements.continuousPages.replaceChildren(fragment);
@@ -1010,7 +1103,7 @@ function commitContinuousIndex(index) {
 }
 
 function scheduleContinuousPageSync() {
-  if (state.continuousScrollFrame != null || state.mode !== 'single' || elements.continuousReader.hidden) return;
+  if (continuousTouchZoom.kind || continuousTouchZoom.suppressSync || state.continuousScrollFrame != null || state.mode !== 'single' || elements.continuousReader.hidden) return;
   state.continuousScrollFrame = window.requestAnimationFrame(() => {
     state.continuousScrollFrame = null;
     const observedIndex = currentContinuousIndex();
@@ -1069,6 +1162,7 @@ function updateReaderSurface() {
   elements.continuousReader.setAttribute('aria-hidden', String(!continuousActive));
   elements.tify.setAttribute('aria-hidden', String(!tifyActive));
   elements.fallback.setAttribute('aria-hidden', String(!fallbackActive));
+  if (!continuousActive) cancelContinuousTouchZoom();
   if (continuousActive && !state.continuousReady) activateContinuousReader(state.index, { behavior: 'auto' });
   if (tifyActive) {
     window.requestAnimationFrame(() => {
@@ -1133,6 +1227,9 @@ function applyContinuousZoom({ restorePage = false } = {}) {
     elements.continuousPages.style.maxWidth = `${68 * state.zoom}rem`;
     elements.continuousPages.dataset.zoomed = 'true';
   }
+  if (state.zoom > 1.01) elements.continuousScroll.dataset.zoomed = 'true';
+  else elements.continuousScroll.removeAttribute('data-zoomed');
+  elements.continuousReader.dataset.readerZoom = String(state.zoom);
   elements.resetZoom.textContent = state.zoom === 1 ? 'Fit' : `${percentage}%`;
   if (restorePage && state.mode === 'single') {
     window.requestAnimationFrame(() => {
@@ -1142,6 +1239,382 @@ function applyContinuousZoom({ restorePage = false } = {}) {
       scrollToContinuousPage(state.index, { behavior: 'auto' });
     });
   }
+}
+
+function clampContinuousZoom(value) {
+  return clampZoom(value, { min: CONTINUOUS_ZOOM_MIN, max: CONTINUOUS_ZOOM_MAX });
+}
+
+function continuousTouchZoomEnabled(event) {
+  return Boolean(
+    event.pointerType === 'touch'
+    && mobileMedia.matches
+    && state.mode === 'single'
+    && !elements.continuousReader.hidden
+    && !['info', 'export'].includes(textValue(state.tify?.options?.view)),
+  );
+}
+
+function setContinuousZoomHud(zoom, { kind = continuousTouchZoom.kind, visible = true } = {}) {
+  if (continuousTouchZoom.hudTimer != null) {
+    window.clearTimeout(continuousTouchZoom.hudTimer);
+    continuousTouchZoom.hudTimer = null;
+  }
+  const percentage = Math.round(clampContinuousZoom(zoom) * 100);
+  const limit = percentage >= Math.round(CONTINUOUS_ZOOM_MAX * 100)
+    ? ' max'
+    : (percentage <= Math.round(CONTINUOUS_ZOOM_MIN * 100) ? ' min' : '');
+  elements.zoomHud.textContent = kind === 'double-drag'
+    ? `↑ in · ↓ out · ${percentage}%${limit}`
+    : `${percentage}%${limit}`;
+  if (visible) elements.zoomHud.dataset.visible = 'true';
+  else elements.zoomHud.removeAttribute('data-visible');
+}
+
+function clearContinuousDoubleTap() {
+  if (continuousTouchZoom.armTimer != null) window.clearTimeout(continuousTouchZoom.armTimer);
+  continuousTouchZoom.armTimer = null;
+  elements.doubleTapCatcher.removeAttribute('data-armed');
+  elements.doubleTapCatcher.style.removeProperty('left');
+  elements.doubleTapCatcher.style.removeProperty('top');
+  continuousTouchZoom.armedFrame = null;
+  continuousTouchZoom.lastTap = null;
+}
+
+function armContinuousDoubleTap(frame, point) {
+  clearContinuousDoubleTap();
+  continuousTouchZoom.lastTap = {
+    time: window.performance.now(),
+    x: point.x,
+    y: point.y,
+    frame,
+  };
+  continuousTouchZoom.armedFrame = frame;
+  const readerRect = elements.continuousReader.getBoundingClientRect();
+  elements.doubleTapCatcher.style.left = `${point.x - readerRect.left}px`;
+  elements.doubleTapCatcher.style.top = `${point.y - readerRect.top}px`;
+  elements.doubleTapCatcher.dataset.armed = 'true';
+  continuousTouchZoom.armTimer = window.setTimeout(clearContinuousDoubleTap, DOUBLE_TAP_DELAY);
+}
+
+function continuousZoomAnchor(clientX, clientY, preferredTarget = null) {
+  const hit = document.elementFromPoint(clientX, clientY);
+  const target = hit?.closest?.('.continuous-page')
+    || preferredTarget?.closest?.('.continuous-page')
+    || state.continuousEntries[state.index]?.figure
+    || elements.continuousPages;
+  const rect = target.getBoundingClientRect();
+  return {
+    target,
+    x: rect.width ? Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) : 0.5,
+    y: rect.height ? Math.max(0, Math.min(1, (clientY - rect.top) / rect.height)) : 0.5,
+    clientX,
+    clientY,
+  };
+}
+
+function captureContinuousTouchPointer(pointerId) {
+  try {
+    elements.continuousReader.setPointerCapture(pointerId);
+  } catch {
+    // A browser may already have cancelled a contact claimed for native scrolling.
+  }
+}
+
+function beginContinuousTouchZoom(kind, anchor) {
+  clearContinuousDoubleTap();
+  cancelContinuousTarget();
+  setMobileToolsOpen(false);
+  continuousTouchZoom.kind = kind;
+  continuousTouchZoom.target = anchor.target;
+  continuousTouchZoom.anchorX = anchor.x;
+  continuousTouchZoom.anchorY = anchor.y;
+  continuousTouchZoom.anchorClientX = anchor.clientX;
+  continuousTouchZoom.anchorClientY = anchor.clientY;
+  continuousTouchZoom.targetClientX = anchor.clientX;
+  continuousTouchZoom.targetClientY = anchor.clientY;
+  continuousTouchZoom.startZoom = state.zoom;
+  continuousTouchZoom.startIndex = state.index;
+  continuousTouchZoom.previewZoom = state.zoom;
+  continuousTouchZoom.suppressSync = true;
+  continuousTouchZoom.moved = false;
+  continuousTouchZoom.tapCandidate = null;
+  continuousTouchZoom.target.dataset.gestureTarget = 'true';
+  continuousTouchZoom.target.style.transformOrigin = `${anchor.x * 100}% ${anchor.y * 100}%`;
+  elements.continuousScroll.dataset.gestureActive = 'true';
+  if (state.continuousScrollFrame != null) window.cancelAnimationFrame(state.continuousScrollFrame);
+  state.continuousScrollFrame = null;
+  const addressUpdatePending = state.continuousSettleTimer != null;
+  if (state.continuousSettleTimer != null) window.clearTimeout(state.continuousSettleTimer);
+  state.continuousSettleTimer = null;
+  if (addressUpdatePending) updateAddress();
+  state.continuousTargetIndex = null;
+  setContinuousZoomHud(state.zoom, { kind, visible: true });
+}
+
+function beginContinuousPinch() {
+  const points = [...continuousTouchZoom.pointers.values()].slice(0, 2);
+  if (points.length < 2) return;
+  const distance = pointDistance(points[0], points[1]);
+  if (distance < 8) return;
+  const clientX = (points[0].x + points[1].x) / 2;
+  const clientY = (points[0].y + points[1].y) / 2;
+  beginContinuousTouchZoom('pinch', continuousZoomAnchor(clientX, clientY));
+  continuousTouchZoom.lastDistance = distance;
+  for (const point of points) captureContinuousTouchPointer(point.id);
+}
+
+function beginContinuousDoubleDrag(event, frame) {
+  beginContinuousTouchZoom('double-drag', continuousZoomAnchor(event.clientX, event.clientY, frame));
+  continuousTouchZoom.startY = event.clientY;
+  continuousTouchZoom.lastY = event.clientY;
+  captureContinuousTouchPointer(event.pointerId);
+}
+
+function queueContinuousZoomPreview(zoom, targetClientX, targetClientY) {
+  continuousTouchZoom.previewZoom = clampContinuousZoom(zoom);
+  continuousTouchZoom.targetClientX = targetClientX;
+  continuousTouchZoom.targetClientY = targetClientY;
+  continuousTouchZoom.moved = continuousTouchZoom.moved
+    || Math.abs(continuousTouchZoom.previewZoom - continuousTouchZoom.startZoom) >= 0.005;
+  if (continuousTouchZoom.previewFrame != null) return;
+  continuousTouchZoom.previewFrame = window.requestAnimationFrame(() => {
+    continuousTouchZoom.previewFrame = null;
+    if (!continuousTouchZoom.kind || !continuousTouchZoom.target) return;
+    const scale = continuousTouchZoom.previewZoom / continuousTouchZoom.startZoom;
+    const translateX = continuousTouchZoom.kind === 'pinch'
+      ? continuousTouchZoom.targetClientX - continuousTouchZoom.anchorClientX
+      : 0;
+    const translateY = continuousTouchZoom.kind === 'pinch'
+      ? continuousTouchZoom.targetClientY - continuousTouchZoom.anchorClientY
+      : 0;
+    continuousTouchZoom.target.style.transform = `translate3d(${translateX}px, ${translateY}px, 0) scale(${scale})`;
+    setContinuousZoomHud(continuousTouchZoom.previewZoom);
+  });
+}
+
+function releaseContinuousTouchPointers() {
+  for (const pointerId of continuousTouchZoom.pointers.keys()) {
+    try {
+      if (elements.continuousReader.hasPointerCapture(pointerId)) elements.continuousReader.releasePointerCapture(pointerId);
+    } catch {
+      // Pointer capture is already gone after pointerup/pointercancel in some browsers.
+    }
+  }
+  continuousTouchZoom.pointers.clear();
+}
+
+function finishContinuousTouchZoom({ commit = true, showResult = true } = {}) {
+  if (!continuousTouchZoom.kind) return;
+  const target = continuousTouchZoom.target;
+  const anchorX = continuousTouchZoom.anchorX;
+  const anchorY = continuousTouchZoom.anchorY;
+  const clientX = continuousTouchZoom.targetClientX;
+  const clientY = continuousTouchZoom.targetClientY;
+  const nextZoom = continuousTouchZoom.previewZoom;
+  const startIndex = continuousTouchZoom.startIndex;
+  const changed = continuousTouchZoom.moved && Math.abs(nextZoom - state.zoom) >= 0.005;
+
+  if (continuousTouchZoom.previewFrame != null) window.cancelAnimationFrame(continuousTouchZoom.previewFrame);
+  continuousTouchZoom.previewFrame = null;
+  target?.style.removeProperty('transform');
+  target?.style.removeProperty('transform-origin');
+  target?.removeAttribute('data-gesture-target');
+  elements.continuousScroll.removeAttribute('data-gesture-active');
+  continuousTouchZoom.kind = '';
+  continuousTouchZoom.target = null;
+  continuousTouchZoom.tapCandidate = null;
+  clearContinuousDoubleTap();
+  releaseContinuousTouchPointers();
+
+  if (commit && changed && target?.isConnected) {
+    state.zoom = clampContinuousZoom(nextZoom);
+    applyContinuousZoom();
+    const rect = target.getBoundingClientRect();
+    const deltaX = rect.left + (rect.width * anchorX) - clientX;
+    const deltaY = rect.top + (rect.height * anchorY) - clientY;
+    const maximumLeft = Math.max(0, elements.continuousScroll.scrollWidth - elements.continuousScroll.clientWidth);
+    const maximumTop = Math.max(0, elements.continuousScroll.scrollHeight - elements.continuousScroll.clientHeight);
+    elements.continuousScroll.scrollLeft = Math.max(0, Math.min(maximumLeft, elements.continuousScroll.scrollLeft + deltaX));
+    elements.continuousScroll.scrollTop = Math.max(0, Math.min(maximumTop, elements.continuousScroll.scrollTop + deltaY));
+    if (continuousTouchZoom.hydrationTimer != null) window.clearTimeout(continuousTouchZoom.hydrationTimer);
+    continuousTouchZoom.hydrationTimer = window.setTimeout(() => {
+      continuousTouchZoom.hydrationTimer = null;
+      if (state.mode !== 'single' || elements.continuousReader.hidden) return;
+      for (let index = Math.max(0, startIndex - 1); index <= Math.min(state.pages.length - 1, startIndex + 1); index += 1) {
+        hydrateContinuousImage(index);
+      }
+    }, 140);
+    window.requestAnimationFrame(() => {
+      if (!continuousTouchZoom.kind) continuousTouchZoom.suppressSync = false;
+    });
+    announce(`Zoom ${Math.round(state.zoom * 100)} percent.`);
+  } else {
+    continuousTouchZoom.suppressSync = false;
+  }
+
+  if (showResult) {
+    setContinuousZoomHud(commit && changed ? state.zoom : nextZoom, { kind: '', visible: true });
+    continuousTouchZoom.hudTimer = window.setTimeout(() => setContinuousZoomHud(state.zoom, { visible: false }), 450);
+  } else {
+    setContinuousZoomHud(state.zoom, { visible: false });
+  }
+}
+
+function cancelContinuousTouchZoom() {
+  finishContinuousTouchZoom({ commit: false, showResult: false });
+  if (continuousTouchZoom.hydrationTimer != null) window.clearTimeout(continuousTouchZoom.hydrationTimer);
+  continuousTouchZoom.hydrationTimer = null;
+  continuousTouchZoom.suppressSync = false;
+  continuousTouchZoom.tapCandidate = null;
+  clearContinuousDoubleTap();
+  releaseContinuousTouchPointers();
+  setContinuousZoomHud(state.zoom, { visible: false });
+}
+
+function handleContinuousPointerDown(event) {
+  cancelContinuousTarget();
+  if (!continuousTouchZoomEnabled(event)) return;
+  const lastTap = continuousTouchZoom.lastTap;
+  const frame = event.target === elements.doubleTapCatcher
+    ? lastTap?.frame
+    : event.target.closest?.('.continuous-image-frame');
+  const insideScroll = elements.continuousScroll.contains(event.target);
+  if (!insideScroll && event.target !== elements.doubleTapCatcher) return;
+  if (continuousTouchZoom.kind) {
+    event.preventDefault();
+    return;
+  }
+  const point = { id: event.pointerId, x: event.clientX, y: event.clientY };
+  continuousTouchZoom.pointers.set(event.pointerId, point);
+
+  if (continuousTouchZoom.pointers.size >= 2) {
+    event.preventDefault();
+    beginContinuousPinch();
+    return;
+  }
+
+  if (!frame) {
+    clearContinuousDoubleTap();
+    continuousTouchZoom.tapCandidate = null;
+    return;
+  }
+
+  if (
+    lastTap
+    && lastTap.frame === frame
+    && window.performance.now() - lastTap.time <= DOUBLE_TAP_DELAY
+    && isSecondTap(
+      { ...lastTap, target: lastTap.frame },
+      { ...point, time: window.performance.now(), target: frame },
+      { maxDelay: DOUBLE_TAP_DELAY, maxDistance: DOUBLE_TAP_MAX_DISTANCE },
+    )
+  ) {
+    event.preventDefault();
+    beginContinuousDoubleDrag(event, frame);
+    return;
+  }
+
+  if (lastTap) clearContinuousDoubleTap();
+  continuousTouchZoom.tapCandidate = {
+    pointerId: event.pointerId,
+    startedAt: window.performance.now(),
+    startX: event.clientX,
+    startY: event.clientY,
+    frame,
+  };
+}
+
+function handleContinuousPointerMove(event) {
+  const point = continuousTouchZoom.pointers.get(event.pointerId);
+  if (!point) return;
+  point.x = event.clientX;
+  point.y = event.clientY;
+
+  if (continuousTouchZoom.kind === 'pinch') {
+    event.preventDefault();
+    const points = [...continuousTouchZoom.pointers.values()].slice(0, 2);
+    if (points.length < 2) return;
+    const distance = pointDistance(points[0], points[1]);
+    const clientX = (points[0].x + points[1].x) / 2;
+    const clientY = (points[0].y + points[1].y) / 2;
+    queueContinuousZoomPreview(
+      pinchZoom(
+        continuousTouchZoom.previewZoom,
+        continuousTouchZoom.lastDistance,
+        distance,
+        { min: CONTINUOUS_ZOOM_MIN, max: CONTINUOUS_ZOOM_MAX },
+      ),
+      clientX,
+      clientY,
+    );
+    continuousTouchZoom.lastDistance = distance;
+    return;
+  }
+
+  if (continuousTouchZoom.kind === 'double-drag') {
+    event.preventDefault();
+    const distanceFromStart = event.clientY - continuousTouchZoom.startY;
+    if (!continuousTouchZoom.moved && Math.abs(distanceFromStart) < 7) return;
+    const deltaY = continuousTouchZoom.moved
+      ? event.clientY - continuousTouchZoom.lastY
+      : distanceFromStart - (Math.sign(distanceFromStart) * 7);
+    queueContinuousZoomPreview(
+      dragZoom(continuousTouchZoom.previewZoom, deltaY, {
+        sensitivity: 180,
+        min: CONTINUOUS_ZOOM_MIN,
+        max: CONTINUOUS_ZOOM_MAX,
+      }),
+      continuousTouchZoom.anchorClientX,
+      continuousTouchZoom.anchorClientY,
+    );
+    continuousTouchZoom.lastY = event.clientY;
+    return;
+  }
+
+  const candidate = continuousTouchZoom.tapCandidate;
+  if (candidate?.pointerId === event.pointerId && Math.hypot(event.clientX - candidate.startX, event.clientY - candidate.startY) > TAP_MAX_TRAVEL) {
+    continuousTouchZoom.tapCandidate = null;
+    clearContinuousDoubleTap();
+  }
+}
+
+function handleContinuousPointerUp(event) {
+  if (!continuousTouchZoom.pointers.has(event.pointerId)) return;
+  continuousTouchZoom.pointers.delete(event.pointerId);
+  if (continuousTouchZoom.kind === 'pinch') {
+    if (continuousTouchZoom.pointers.size < 2) finishContinuousTouchZoom();
+    return;
+  }
+  if (continuousTouchZoom.kind === 'double-drag') {
+    finishContinuousTouchZoom();
+    return;
+  }
+
+  const candidate = continuousTouchZoom.tapCandidate;
+  continuousTouchZoom.tapCandidate = null;
+  if (
+    candidate?.pointerId === event.pointerId
+    && window.performance.now() - candidate.startedAt <= TAP_MAX_DURATION
+    && Math.hypot(event.clientX - candidate.startX, event.clientY - candidate.startY) <= TAP_MAX_TRAVEL
+  ) {
+    armContinuousDoubleTap(candidate.frame, { x: event.clientX, y: event.clientY });
+  }
+}
+
+function handleContinuousPointerCancel(event) {
+  if (!continuousTouchZoom.pointers.has(event.pointerId) && !continuousTouchZoom.kind) return;
+  continuousTouchZoom.pointers.delete(event.pointerId);
+  cancelContinuousTouchZoom();
+}
+
+function handleContinuousLostPointerCapture(event) {
+  if (event.target === elements.continuousReader && continuousTouchZoom.kind) handleContinuousPointerCancel(event);
+}
+
+function preventNativeContinuousTouchGesture(event) {
+  if (!mobileMedia.matches || state.mode !== 'single' || elements.continuousReader.hidden) return;
+  if (event.touches.length > 1 || continuousTouchZoom.kind) event.preventDefault();
 }
 
 function canLoadTify() {
@@ -1241,6 +1714,7 @@ function setCurrentIndex(index, { updateViewer = true, speak = true, scrollBehav
 
 function setMode(mode) {
   if (!['single', 'spread'].includes(mode)) return;
+  cancelContinuousTouchZoom();
   if (state.mode === mode) {
     setMobileToolsOpen(false);
     return;
@@ -1425,6 +1899,7 @@ async function initialize() {
   }
 
   state.generation += 1;
+  cancelContinuousTouchZoom();
   state.controller?.abort();
   state.controller = new AbortController();
   if (state.tifyTimer) window.clearInterval(state.tifyTimer);
@@ -1447,6 +1922,7 @@ async function initialize() {
   if (state.continuousResizeTimer != null) window.clearTimeout(state.continuousResizeTimer);
   state.continuousResizeTimer = null;
   state.continuousObservedWidth = 0;
+  for (const index of [...state.continuousLoadedIndices]) releaseContinuousImage(index);
   state.continuousEntries = [];
   state.continuousLoadedIndices = new Set();
   state.continuousPrimaryIndex = null;
@@ -1538,8 +2014,9 @@ function movePage(direction) {
 }
 
 function changeZoom(factor) {
+  cancelContinuousTouchZoom();
   if (state.mode === 'single' && !['info', 'export'].includes(textValue(state.tify?.options?.view))) {
-    state.zoom = Math.max(0.75, Math.min(2.5, Math.round(state.zoom * factor * 100) / 100));
+    state.zoom = clampContinuousZoom(Math.round(state.zoom * factor * 100) / 100);
     applyContinuousZoom({ restorePage: true });
     return;
   }
@@ -1553,6 +2030,7 @@ function changeZoom(factor) {
 }
 
 function resetZoom() {
+  cancelContinuousTouchZoom();
   if (state.mode === 'single' && !['info', 'export'].includes(textValue(state.tify?.options?.view))) {
     state.zoom = 1;
     applyContinuousZoom({ restorePage: true });
@@ -1715,7 +2193,10 @@ document.addEventListener('pointerdown', (event) => {
   if (!state.mobileToolsOpen || elements.secondaryTools.contains(event.target) || elements.mobileToolsToggle.contains(event.target)) return;
   setMobileToolsOpen(false);
 });
-mobileMedia.addEventListener('change', () => setMobileToolsOpen(false));
+mobileMedia.addEventListener('change', () => {
+  setMobileToolsOpen(false);
+  if (!mobileMedia.matches) cancelContinuousTouchZoom();
+});
 
 elements.share.addEventListener('click', async () => {
   const title = elements.title.textContent;
@@ -1746,6 +2227,10 @@ document.addEventListener('fullscreenchange', () => {
   elements.fullscreen.setAttribute('aria-label', active ? 'Exit full screen' : 'Enter full screen');
   const label = elements.fullscreen.querySelector('.fullscreen-label');
   if (label) label.textContent = active ? 'Exit full screen' : 'Full screen';
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) cancelContinuousTouchZoom();
 });
 
 elements.tify.addEventListener('keydown', (event) => {
@@ -1833,12 +2318,23 @@ elements.fallbackScroll.addEventListener('pointerup', (event) => {
   if (Math.abs(x) > 60 && Math.abs(x) > Math.abs(y) * 1.3) movePage(x > 0 ? -1 : 1);
 });
 elements.fallbackScroll.addEventListener('pointercancel', () => { swipeStart = null; });
-elements.continuousScroll.addEventListener('scroll', scheduleContinuousPageSync, { passive: true });
+elements.continuousScroll.addEventListener('scroll', () => {
+  if (!continuousTouchZoom.kind) clearContinuousDoubleTap();
+  scheduleContinuousPageSync();
+}, { passive: true });
 elements.continuousScroll.addEventListener('wheel', cancelContinuousTarget, { passive: true });
-elements.continuousScroll.addEventListener('pointerdown', cancelContinuousTarget, { passive: true });
+elements.continuousReader.addEventListener('pointerdown', handleContinuousPointerDown, { passive: false });
+elements.continuousReader.addEventListener('pointermove', handleContinuousPointerMove, { passive: false });
+elements.continuousReader.addEventListener('pointerup', handleContinuousPointerUp);
+elements.continuousReader.addEventListener('pointercancel', handleContinuousPointerCancel);
+elements.continuousReader.addEventListener('lostpointercapture', handleContinuousLostPointerCapture);
+elements.continuousReader.addEventListener('touchstart', preventNativeContinuousTouchGesture, { passive: false });
+elements.continuousReader.addEventListener('touchmove', preventNativeContinuousTouchGesture, { passive: false });
 elements.continuousScroll.addEventListener('scrollend', cancelContinuousTarget, { passive: true });
 
 window.addEventListener('beforeunload', () => {
+  cancelContinuousTouchZoom();
+  for (const index of [...state.continuousLoadedIndices]) releaseContinuousImage(index);
   state.controller?.abort();
   if (state.tifyTimer) window.clearInterval(state.tifyTimer);
   state.thumbnailObserver?.disconnect();
@@ -1847,6 +2343,8 @@ window.addEventListener('beforeunload', () => {
   if (state.continuousScrollFrame != null) window.cancelAnimationFrame(state.continuousScrollFrame);
   if (state.continuousSettleTimer != null) window.clearTimeout(state.continuousSettleTimer);
   if (state.continuousResizeTimer != null) window.clearTimeout(state.continuousResizeTimer);
+  if (continuousTouchZoom.hudTimer != null) window.clearTimeout(continuousTouchZoom.hudTimer);
+  if (continuousTouchZoom.hydrationTimer != null) window.clearTimeout(continuousTouchZoom.hydrationTimer);
   state.tify?.destroy?.();
 });
 

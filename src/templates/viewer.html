@@ -90,9 +90,12 @@
 
     <main class="reader-stage" id="reader-stage" tabindex="-1" aria-label="Digitized volume">
       <section class="continuous-reader" id="continuous-reader" aria-label="Continuous page view" hidden>
-        <div class="continuous-scroll" id="continuous-scroll" tabindex="0">
+        <div class="continuous-scroll" id="continuous-scroll" tabindex="0" aria-describedby="continuous-gesture-help">
           <div class="continuous-pages" id="continuous-pages"></div>
         </div>
+        <div class="double-tap-catcher" id="double-tap-catcher" aria-hidden="true"></div>
+        <div class="gesture-zoom-hud" id="gesture-zoom-hud" aria-hidden="true">100%</div>
+        <p class="sr-only" id="continuous-gesture-help">Scroll to read. On mobile, pinch or double-tap and drag vertically to zoom. Zoom buttons are in the reader controls; on mobile, open More.</p>
       </section>
 
       <div id="tify" hidden></div>

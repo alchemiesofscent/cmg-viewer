@@ -11,7 +11,7 @@
     "sync:samples": "node scripts/python.mjs scripts/sync.py --scope samples",
     "build": "node scripts/python.mjs scripts/build.py",
     "validate": "node scripts/python.mjs scripts/validate.py",
-    "test": "node scripts/python.mjs -m unittest discover -s scripts/tests -v",
+    "test": "node scripts/test.mjs",
     "serve": "node scripts/python.mjs scripts/serve.py --port 8000"
   },
   "dependencies": {
