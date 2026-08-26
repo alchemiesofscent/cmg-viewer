@@ -128,15 +128,18 @@ class _Response:
 
 
 class DownloadRetryTests(unittest.TestCase):
-    def test_retries_transient_502_and_writes_the_valid_cache(self) -> None:
+    def test_retries_multiple_transient_502s_and_writes_the_valid_cache(self) -> None:
         url = f"{service('fallback_test_0001')}/info.json"
-        transient = urllib.error.HTTPError(url, 502, "Bad Gateway", {}, None)
+        transients = [
+            urllib.error.HTTPError(url, 502, "Bad Gateway", {}, None)
+            for _attempt in range(3)
+        ]
         with tempfile.TemporaryDirectory() as directory:
             with (
                 mock.patch.object(
                     fallback.urllib.request,
                     "urlopen",
-                    side_effect=[transient, _Response(url, b"{}")],
+                    side_effect=[*transients, _Response(url, b"{}")],
                 ) as opener,
                 mock.patch.object(fallback.time, "sleep") as sleeper,
             ):
@@ -150,8 +153,11 @@ class DownloadRetryTests(unittest.TestCase):
                 )
                 self.assertEqual(cache.read_bytes(), b"{}")
         self.assertEqual(payload, b"{}")
-        self.assertEqual(opener.call_count, 2)
-        sleeper.assert_called_once()
+        self.assertEqual(opener.call_count, 4)
+        self.assertEqual(sleeper.call_count, 3)
+        delays = [call.args[0] for call in sleeper.call_args_list]
+        self.assertLess(delays[0], delays[1])
+        self.assertLess(delays[1], delays[2])
 
     def test_non_retryable_404_fails_closed_without_sleeping(self) -> None:
         url = f"{service('fallback_test_0001')}/info.json"
@@ -172,7 +178,7 @@ class DownloadRetryTests(unittest.TestCase):
         url = f"{service('fallback_test_0001')}/info.json"
         failures = [
             urllib.error.HTTPError(url, 502, "Bad Gateway", {}, None)
-            for _attempt in range(2)
+            for _attempt in range(4)
         ]
         with tempfile.TemporaryDirectory() as directory:
             with (
@@ -193,8 +199,8 @@ class DownloadRetryTests(unittest.TestCase):
             self.assertFalse((Path(directory) / "000001.json").exists())
         self.assertIn("ORDER 1", str(raised.exception))
         self.assertIn("HTTP 502", str(raised.exception))
-        self.assertEqual(opener.call_count, 2)
-        sleeper.assert_called_once()
+        self.assertEqual(opener.call_count, 4)
+        self.assertEqual(sleeper.call_count, 3)
 
     def test_network_error_is_not_retried(self) -> None:
         url = f"{service('fallback_test_0001')}/info.json"
