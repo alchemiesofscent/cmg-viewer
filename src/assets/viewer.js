@@ -85,7 +85,9 @@ const elements = {
   live: document.querySelector('#reader-live'),
 };
 
-const mobileMedia = window.matchMedia('(max-width: 48rem)');
+// Keep the touch reader active when a phone rotates to landscape. This query
+// must match the compact layout in viewer.css.
+const mobileMedia = window.matchMedia('(max-width: 48rem), (max-width: 64rem) and (max-height: 32rem)');
 const CONTINUOUS_ZOOM_MIN = 0.75;
 const CONTINUOUS_ZOOM_MAX = 2.5;
 const DOUBLE_TAP_DELAY = 300;
@@ -2347,6 +2349,7 @@ function setMobileToolsOpen(open, { restoreFocus = false } = {}) {
   elements.mobileToolsToggle.setAttribute('aria-expanded', String(state.mobileToolsOpen));
   if (state.mobileToolsOpen) {
     window.requestAnimationFrame(() => {
+      if (!state.mobileToolsOpen) return;
       elements.secondaryTools.querySelector('button:not(:disabled), a[href], input:not(:disabled)')?.focus();
     });
   } else if (mobileMedia.matches && (restoreFocus || elements.secondaryTools.contains(document.activeElement))) {
@@ -2419,7 +2422,13 @@ function goToPageFromField() {
 elements.jumpForm.addEventListener('submit', (event) => {
   event.preventDefault();
   if (!goToPageFromField()) return;
-  elements.orderInput.select();
+  if (mobileMedia.matches) {
+    // Return to reading and dismiss the software keyboard after Go/Enter.
+    elements.orderInput.blur();
+    elements.stage.focus({ preventScroll: true });
+  } else {
+    elements.orderInput.select();
+  }
 });
 elements.orderInput.addEventListener('input', () => elements.orderInput.setCustomValidity(''));
 elements.orderInput.addEventListener('change', goToPageFromField);

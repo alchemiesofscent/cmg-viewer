@@ -8,6 +8,9 @@
   height: 100vh;
   height: 100dvh;
   min-height: 0;
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-left: env(safe-area-inset-left);
   grid-template-areas:
     "header"
     "toolbar"
@@ -183,6 +186,10 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   display: flex;
   order: 0;
   gap: 0.55rem;
+}
+
+.contents-toggle {
+  order: -1;
 }
 
 .page-controls {
@@ -1024,12 +1031,14 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
 }
 
 @media (max-width: 58rem) {
-  .reader-actions .tool-button {
+  .reader-actions .tool-button,
+  .contents-toggle {
     width: 2.45rem;
     padding-inline: 0;
   }
 
   .reader-actions .tool-button span:last-child,
+  .contents-toggle span:last-child,
   .page-status {
     display: none;
   }
@@ -1045,7 +1054,8 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   }
 }
 
-@media (max-width: 48rem) {
+/* Keep in sync with mobileMedia in viewer.js, including landscape phones. */
+@media (max-width: 48rem), (max-width: 64rem) and (max-height: 32rem) {
   .reader-app {
     grid-template-areas:
       "header"
@@ -1114,7 +1124,7 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
     right: 0.5rem;
     bottom: calc(100% + 0.45rem);
     display: none;
-    width: min(20rem, calc(100vw - 1rem));
+    width: min(20rem, calc(100% - 1rem));
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.45rem;
     padding: 0.55rem;
@@ -1122,7 +1132,7 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
     border-radius: 0.45rem;
     background: #f8f4ec;
     box-shadow: 0 14px 38px rgb(0 0 0 / 32%);
-    max-height: calc(100dvh - 7.5rem);
+    max-height: calc(100dvh - 7.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     overflow-y: auto;
     overscroll-behavior: contain;
   }
@@ -1148,6 +1158,10 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
 
   .reader-actions .tool-button span:last-child {
     display: inline;
+  }
+
+  .reader-actions .thumbnails-toggle {
+    grid-column: 1 / -1;
   }
 
   .reader-secondary-tools .segmented-control,
@@ -1185,6 +1199,17 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
     order: 0;
   }
 
+  .page-status,
+  .page-jump label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
   .tool-button,
   .segmented-control button {
     min-height: 2.75rem;
@@ -1205,16 +1230,33 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
     width: 4.2rem;
     min-height: 2.75rem;
     border-color: #afa69a;
+    font-size: 1rem;
     font-weight: 680;
   }
 
+  .contents-toggle,
   .mobile-tools-toggle {
     display: inline-flex;
-    width: 2.75rem;
-    flex: 0 0 2.75rem;
+    width: 3.6rem;
+    flex: 0 0 3.6rem;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.25rem 0.15rem;
+    font-size: 0.65rem;
+    line-height: 1.15;
+  }
+
+  .contents-toggle span:first-child,
+  .mobile-tools-toggle span:first-child {
+    font-size: 1.05rem;
+  }
+
+  .contents-toggle span:last-child {
+    display: inline;
+  }
+
+  .mobile-tools-toggle {
     order: 1;
-    padding: 0;
-    letter-spacing: 0.08em;
   }
 
   .mobile-tools-toggle[aria-expanded="true"] {
@@ -1281,6 +1323,32 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
     width: 3.7rem;
     height: 4.85rem;
     padding: 0.18rem;
+  }
+
+  .contents-drawer {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .drawer-header {
+    min-height: 4.5rem;
+    padding: 0.65rem 1rem;
+  }
+
+  .drawer-close {
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 2.75rem;
+  }
+
+  .contents-entry button {
+    min-height: 2.75rem;
+    align-items: center;
+  }
+
+  .contents-list {
+    overscroll-behavior: contain;
   }
 }
 

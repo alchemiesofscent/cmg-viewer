@@ -726,6 +726,23 @@ body.authors-menu-open {
 }
 
 @media (max-width: 54rem) {
+  .search-field input,
+  .sort-control select {
+    font-size: 1rem;
+  }
+
+  .clear-search,
+  .text-button,
+  .show-more,
+  .sort-control select {
+    min-height: 2.75rem;
+  }
+
+  .filter-option {
+    min-height: 2.75rem;
+    align-items: center;
+  }
+
   .site-header {
     grid-template-columns: minmax(0, 1fr) max-content;
     gap: 0.55rem 1rem;
@@ -804,7 +821,8 @@ body.authors-menu-open {
 
   .authors-menu-toggle,
   .source-link {
-    min-height: 2.2rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
     padding: 0.4rem 0.52rem;
   }
 

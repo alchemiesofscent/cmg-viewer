@@ -39,12 +39,12 @@
     </header>
 
     <nav class="reader-toolbar" aria-label="Reader controls">
+      <button class="tool-button contents-toggle" id="contents-toggle" type="button" aria-label="Contents" aria-expanded="false" aria-controls="contents-drawer">
+        <span aria-hidden="true">☰</span><span>Contents</span>
+      </button>
+
       <div class="reader-secondary-tools" id="reader-secondary-tools" aria-label="Additional reader tools">
         <div class="reader-actions">
-          <button class="tool-button contents-toggle" id="contents-toggle" type="button" aria-expanded="false" aria-controls="contents-drawer">
-            <span aria-hidden="true">☰</span><span>Contents</span>
-          </button>
-
           <button class="tool-button thumbnails-toggle" id="thumbnails-toggle" type="button" aria-expanded="false" aria-controls="thumbnail-strip" aria-label="Show page thumbnails" disabled>
             <span aria-hidden="true">▦</span><span>Thumbnails</span>
           </button>
@@ -76,15 +76,15 @@
         <button class="tool-button square" id="previous-page" type="button" aria-label="Previous page" aria-keyshortcuts="ArrowLeft" title="Previous page (Left arrow)">←</button>
         <form class="page-jump" id="page-jump-form">
           <label for="page-order">Page</label>
-          <input id="page-order" name="page" type="text" autocomplete="off" maxlength="16" aria-label="Go to printed page number or label" aria-describedby="page-status">
+          <input id="page-order" name="page" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" maxlength="16" aria-label="Go to printed page number or label" aria-describedby="page-status">
         </form>
         <span class="page-status" id="page-status">—</span>
         <button class="tool-button square" id="next-page" type="button" aria-label="Next page" aria-keyshortcuts="ArrowRight" title="Next page (Right arrow)">→</button>
       </div>
 
       <div class="toolbar-spacer"></div>
-      <button class="tool-button mobile-tools-toggle" id="mobile-tools-toggle" type="button" aria-expanded="false" aria-controls="reader-secondary-tools">
-        <span aria-hidden="true">•••</span><span class="sr-only">More reader tools</span>
+      <button class="tool-button mobile-tools-toggle" id="mobile-tools-toggle" type="button" aria-label="More reader tools" aria-expanded="false" aria-controls="reader-secondary-tools">
+        <span aria-hidden="true">•••</span><span>Tools</span>
       </button>
     </nav>
 
