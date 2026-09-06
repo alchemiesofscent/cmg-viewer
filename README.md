@@ -17,7 +17,10 @@ The reader provides logical contents, stable page-image URLs, a lazy-loaded
 continuous page stream, facing-page layouts, full-resolution zoom, and a
 keyboard-accessible thumbnail rail that loads only nearby previews. A single
 toolbar owns navigation and viewer actions; on phones it becomes a compact
-bottom bar with the same controls in one disclosure. Source page labels are
+bottom bar with Contents, page navigation, and a labelled Tools disclosure.
+The same touch layout stays active in landscape, with safe-area spacing and
+larger catalogue controls. Submitting a page jump returns focus to the reader
+and dismisses the phone keyboard. Source page labels are
 preferred over physical scan numbers in the visible interface, with page
 position used when no distinct label exists.
 
