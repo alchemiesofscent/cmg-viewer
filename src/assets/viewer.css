@@ -503,6 +503,19 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   -webkit-user-drag: none;
 }
 
+.continuous-image-frame[data-preview="true"]::after {
+  position: absolute;
+  z-index: 1;
+  bottom: 0.5rem;
+  left: 0.5rem;
+  padding: 0.2rem 0.4rem;
+  color: white;
+  background: rgb(23 47 59 / 85%);
+  font-size: 0.7rem;
+  content: "Loading clearer image…";
+  pointer-events: none;
+}
+
 .continuous-image-frame[data-image-failed="true"]::after {
   width: min(18rem, calc(100% - 2rem));
   color: #53656b;

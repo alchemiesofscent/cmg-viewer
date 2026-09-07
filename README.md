@@ -26,6 +26,12 @@ and dismisses the phone keyboard. Source page labels are
 preferred over physical scan numbers in the visible interface, with page
 position used when no distinct label exists.
 
+Scroll view prioritizes the requested image before its immediate neighbours,
+shows an available thumbnail while the reading image loads and decodes, and
+keeps nearby decoded images for return navigation. Full-resolution zoom is
+unchanged. See [the performance notes](docs/performance.md) for measurements
+and the limits of the loading checks.
+
 The reviewed live census currently contains 218 work-level entries mapped to
 143 physical viewers and 37,756 available scans. Of those viewers, 117 use
 METS and 26 use a validated legacy-HTML/Digilib fallback.
