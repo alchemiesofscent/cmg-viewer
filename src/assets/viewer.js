@@ -5,6 +5,7 @@ import {
   pinchZoom,
   pointDistance,
 } from './viewer-gesture-math.js';
+import { syncTifyPageSelection } from './viewer-navigation.js';
 
 const PROJECT_PATH = '/cmg-viewer/';
 
@@ -102,9 +103,7 @@ const state = {
   pages: [],
   orderIndex: new Map(),
   index: 0,
-  mode: new URLSearchParams(window.location.search).get('view') === 'single'
-    ? 'single'
-    : (new URLSearchParams(window.location.search).get('view') === 'spread' || !mobileMedia.matches ? 'spread' : 'single'),
+  mode: new URLSearchParams(window.location.search).get('view') === 'spread' ? 'spread' : 'single',
   zoom: 1,
   tify: null,
   tifyPromise: null,
@@ -1699,10 +1698,7 @@ function updatePageUi({ centerThumbnail: shouldCenterThumbnail = true, smoothThu
 function syncTifyPages() {
   if (!state.tify) return;
   state.tifyNavigationGuardUntil = window.performance.now() + 900;
-  if (state.mode === 'single') {
-    state.tify.toggleDoublePage?.(false);
-  }
-  state.tify.setPage(spreadPageNumbers());
+  syncTifyPageSelection(state.tify, spreadPageNumbers());
 }
 
 function setCurrentIndex(index, { updateViewer = true, speak = true, scrollBehavior } = {}) {

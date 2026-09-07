@@ -165,6 +165,9 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
 }
 
 .reader-toolbar {
+  /* Rapid navigation taps must not invoke Safari's double-tap page zoom.
+     Keep native panning/pinch zoom available, and leave image gestures alone. */
+  touch-action: manipulation;
   position: relative;
   z-index: 25;
   display: flex;
