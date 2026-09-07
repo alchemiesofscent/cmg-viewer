@@ -6,6 +6,7 @@ import {
   pointDistance,
 } from './viewer-gesture-math.js';
 import { syncTifyPageSelection } from './viewer-navigation.js';
+import { pageLoadOrder, startImagePreview } from './viewer-loading.js';
 
 const PROJECT_PATH = '/cmg-viewer/';
 
@@ -676,6 +677,7 @@ function displayedPageIndices() {
 function loadThumbnailImage(image) {
   const source = image.dataset.src;
   if (!source) return;
+  image.fetchPriority = 'low';
   image.src = source;
   image.removeAttribute('data-src');
 }
@@ -878,7 +880,14 @@ function hydrateContinuousImage(index) {
     && entry.failedPixelWidth === pixelWidth
     && Date.now() - entry.failedAt < CONTINUOUS_IMAGE_RETRY_DELAY
   ) return;
-  if (entry.pendingImage && entry.pendingPixelWidth >= pixelWidth) return;
+  const primary = index === (state.continuousTargetIndex ?? state.index);
+  if (entry.pendingImage && entry.pendingPixelWidth >= pixelWidth) {
+    if (primary) {
+      entry.pendingImage.fetchPriority = 'high';
+      showContinuousPreview(entry, page, index);
+    }
+    return;
+  }
   if (entry.pendingImage) {
     entry.pendingImage.removeAttribute('src');
     entry.pendingImage.remove();
@@ -902,10 +911,13 @@ function hydrateContinuousImage(index) {
     : `Page ${index + 1} of ${state.pages.length}`;
   image.decoding = 'async';
   image.loading = 'eager';
+  image.fetchPriority = primary ? 'high' : 'low';
   image.draggable = false;
   if (page.width) image.width = page.width;
   if (page.height) image.height = page.height;
-  image.addEventListener('load', () => {
+  image.addEventListener('load', async () => {
+    // Keep the preview (or existing zoom level) visible through image decode.
+    try { await image.decode?.(); } catch { /* The load event still permits display. */ }
     if (entry.pendingImage !== image) return;
     const previousImage = entry.image;
     entry.pendingImage = null;
@@ -916,6 +928,8 @@ function hydrateContinuousImage(index) {
     entry.failedAt = usingThumbnailFallback ? Date.now() : 0;
     entry.failed = false;
     entry.frame.prepend(image);
+    entry.cancelPreview?.();
+    entry.cancelPreview = null;
     previousImage?.removeAttribute('src');
     previousImage?.remove();
     entry.frame.removeAttribute('data-loading');
@@ -933,6 +947,8 @@ function hydrateContinuousImage(index) {
     entry.pendingPixelWidth = 0;
     entry.failedPixelWidth = pixelWidth;
     entry.failedAt = Date.now();
+    entry.cancelPreview?.();
+    entry.cancelPreview = null;
     image.removeAttribute('src');
     image.remove();
     entry.frame.removeAttribute('data-loading');
@@ -946,13 +962,26 @@ function hydrateContinuousImage(index) {
   entry.pendingImage = image;
   entry.pendingPixelWidth = pixelWidth;
   state.continuousLoadedIndices.add(index);
+  if (primary) showContinuousPreview(entry, page, index);
   image.src = source;
+}
+
+function showContinuousPreview(entry, page, index) {
+  if (entry.image || entry.cancelPreview || !page.thumbnail || entry.pendingPixelWidth <= 400) return;
+  if (page.thumbnail === continuousImageUrl(page, entry.pendingPixelWidth)) return;
+  entry.cancelPreview = startImagePreview(entry.frame, page.thumbnail, {
+    alt: `${pageDisplay(page, index)} (preview)`,
+    width: page.width,
+    height: page.height,
+  });
 }
 
 function releaseContinuousImage(index) {
   const entry = state.continuousEntries[index];
   if (!entry) return;
   const images = [entry.image, entry.pendingImage];
+  entry.cancelPreview?.();
+  entry.cancelPreview = null;
   entry.image = null;
   entry.pixelWidth = 0;
   entry.pendingImage = null;
@@ -1031,6 +1060,7 @@ function renderContinuousPages() {
       pixelWidth: 0,
       pendingImage: null,
       pendingPixelWidth: 0,
+      cancelPreview: null,
       failedPixelWidth: 0,
       failedAt: 0,
       failed: false,
@@ -1058,7 +1088,7 @@ function renderContinuousPages() {
 function observeContinuousImages() {
   state.continuousImageObserver?.disconnect();
   if (!('IntersectionObserver' in window)) {
-    for (let index = Math.max(0, state.index - 3); index <= Math.min(state.pages.length - 1, state.index + 3); index += 1) {
+    for (const index of pageLoadOrder(state.index, state.pages.length)) {
       hydrateContinuousImage(index);
     }
     return;
@@ -1070,7 +1100,7 @@ function observeContinuousImages() {
     }
   }, {
     root: elements.continuousScroll,
-    rootMargin: '150% 0px',
+    rootMargin: '50% 0px',
     threshold: 0.01,
   });
   state.continuousEntries.forEach((entry) => state.continuousImageObserver.observe(entry.figure));
@@ -1096,17 +1126,20 @@ function currentContinuousIndex() {
 
 function commitContinuousIndex(index) {
   if (!state.pages[index]) return;
-  if (!('IntersectionObserver' in window)) hydrateContinuousImage(index);
   releaseDistantContinuousImages(index);
-  if (index === state.index) return;
+  if (index === state.index) {
+    hydrateContinuousImage(index);
+    return;
+  }
   state.index = index;
+  hydrateContinuousImage(index);
   updateContinuousSelection(index);
   updatePageUi({ centerThumbnail: false, smoothThumbnail: false, updateUrl: false });
   if (state.continuousSettleTimer != null) window.clearTimeout(state.continuousSettleTimer);
   state.continuousSettleTimer = window.setTimeout(() => {
     state.continuousSettleTimer = null;
     if (state.mode !== 'single') return;
-    for (let nearby = Math.max(0, state.index - 2); nearby <= Math.min(state.pages.length - 1, state.index + 2); nearby += 1) {
+    for (const nearby of pageLoadOrder(state.index, state.pages.length)) {
       hydrateContinuousImage(nearby);
     }
     updateAddress();
@@ -1139,10 +1172,10 @@ function scrollToContinuousPage(index, { behavior } = {}) {
   const scrollBehavior = behavior || (!reducedMotion && distance <= 4 ? 'smooth' : 'auto');
   state.continuousTargetIndex = index;
   updateContinuousSelection(index);
-  for (let nearby = Math.max(0, index - 2); nearby <= Math.min(state.pages.length - 1, index + 2); nearby += 1) {
+  releaseDistantContinuousImages(index);
+  for (const nearby of pageLoadOrder(index, state.pages.length)) {
     hydrateContinuousImage(nearby);
   }
-  releaseDistantContinuousImages(index);
   elements.continuousScroll.scrollTo({
     top: Math.max(0, entry.figure.offsetTop - 16),
     behavior: scrollBehavior,
