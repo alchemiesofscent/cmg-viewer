@@ -1,4 +1,9 @@
 .viewer-page {
+  /* Override base.css's 100vh minimum: mobile browser chrome can make that
+     taller than the reader and allow the document to shift under the UI. */
+  min-height: 0;
+  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: #20282c;
 }
