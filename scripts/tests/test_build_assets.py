@@ -29,3 +29,15 @@ class AssetVersionTests(unittest.TestCase):
             write('export const tree = 2;')
             version_ui_assets(root)
             self.assertNotEqual(versions()[0], first[0])
+
+
+class ReaderContractTests(unittest.TestCase):
+    def test_real_viewer_template_satisfies_deployment_tool_contract(self):
+        from scripts.validate import validate_tool_disclosure, ValidationError
+        path = Path(__file__).resolve().parents[2] / 'src/templates/viewer.html'
+        template = path.read_text()
+        validate_tool_disclosure(template, path)
+        with self.assertRaises(ValidationError):
+            validate_tool_disclosure(template.replace('id="tools-toggle"', 'id="missing-toggle"'), path)
+        with self.assertRaises(ValidationError):
+            validate_tool_disclosure(template.replace('aria-controls="reader-secondary-tools"', ''), path)
