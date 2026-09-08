@@ -1,3 +1,4 @@
+import { setupKeyboardToolbar } from './viewer-keyboard.js';
 import { setupSharePanel } from './viewer-share.js';
 import { setupToolsMenu } from './viewer-tools.js';
 import { setupCorpusContents } from './viewer-corpus.js';
@@ -94,6 +95,11 @@ const elements = {
 // Keep the touch reader active when a phone rotates to landscape. This query
 // must match the compact layout in viewer.css.
 const mobileMedia = window.matchMedia('(max-width: 48rem), (max-width: 64rem) and (max-height: 32rem)');
+const disposeKeyboardToolbar = setupKeyboardToolbar({
+  input: elements.orderInput,
+  toolbar: document.querySelector('.reader-toolbar'),
+  media: mobileMedia,
+});
 const CONTINUOUS_ZOOM_MIN = 0.75;
 const CONTINUOUS_ZOOM_MAX = 2.5;
 const DOUBLE_TAP_DELAY = 300;
@@ -2677,6 +2683,7 @@ window.addEventListener('pagehide', () => {
 window.addEventListener('pageshow', syncFullscreenUi);
 
 window.addEventListener('beforeunload', () => {
+  disposeKeyboardToolbar();
   cancelContinuousTouchZoom();
   for (const index of [...state.continuousLoadedIndices]) releaseContinuousImage(index);
   state.controller?.abort();

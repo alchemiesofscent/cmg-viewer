@@ -1507,3 +1507,8 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   .page-controls .page-jump input { width: 2.5rem; }
   .page-go { min-width: 2rem; }
 }
+
+@media (max-width: 48rem), (max-width: 64rem) and (max-height: 32rem) {
+  /* Safari's keyboard shrinks the visual viewport, independently of 100dvh. */
+  .reader-toolbar { transform: translateY(calc(-1 * var(--keyboard-lift, 0px))); }
+}
