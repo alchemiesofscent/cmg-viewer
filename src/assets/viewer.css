@@ -186,9 +186,7 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   grid-area: toolbar;
 }
 
-.reader-secondary-tools {
-  display: contents;
-}
+.reader-secondary-tools[hidden] { display: none; }
 
 .reader-actions {
   display: flex;
@@ -220,8 +218,8 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   order: 5;
 }
 
-.mobile-tools-toggle {
-  display: none;
+.tools-toggle {
+  display: inline-flex;
   order: 6;
 }
 
@@ -1141,73 +1139,8 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   }
 
   .reader-secondary-tools {
-    position: absolute;
-    z-index: 45;
-    right: 0.5rem;
+    top: auto;
     bottom: calc(100% + 0.45rem);
-    display: none;
-    width: min(20rem, calc(100% - 1rem));
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.45rem;
-    padding: 0.55rem;
-    border: 1px solid #c9c1b5;
-    border-radius: 0.45rem;
-    background: #f8f4ec;
-    box-shadow: 0 14px 38px rgb(0 0 0 / 32%);
-    max-height: calc(100dvh - 7.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-
-  .reader-secondary-tools[data-open="true"] {
-    display: grid;
-  }
-
-  .reader-actions {
-    display: grid;
-    grid-column: 1 / -1;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    order: initial;
-    gap: 0.45rem;
-  }
-
-  .reader-actions .tool-button,
-  .reader-secondary-tools .fullscreen-button {
-    width: 100%;
-    min-height: 2.75rem;
-    padding-inline: 0.65rem;
-  }
-
-  .reader-actions .tool-button span:last-child {
-    display: inline;
-  }
-
-  .reader-actions .thumbnails-toggle {
-    grid-column: 1 / -1;
-  }
-
-  .reader-secondary-tools .segmented-control,
-  .reader-secondary-tools .zoom-controls {
-    display: flex;
-    width: 100%;
-    grid-column: 1 / -1;
-    order: initial;
-  }
-
-  .reader-secondary-tools .segmented-control button,
-  .reader-secondary-tools .zoom-controls button {
-    min-height: 2.75rem;
-    flex: 1 1 0;
-  }
-
-  .reader-secondary-tools .fullscreen-button {
-    display: inline-flex;
-    grid-column: 1 / -1;
-    order: initial;
-  }
-
-  .reader-secondary-tools .fullscreen-label {
-    display: inline;
   }
 
   .toolbar-spacer {
@@ -1257,7 +1190,7 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   }
 
   .contents-toggle,
-  .mobile-tools-toggle {
+  .tools-toggle {
     display: inline-flex;
     width: 3.6rem;
     flex: 0 0 3.6rem;
@@ -1269,7 +1202,7 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   }
 
   .contents-toggle span:first-child,
-  .mobile-tools-toggle span:first-child {
+  .tools-toggle span:first-child {
     font-size: 1.05rem;
   }
 
@@ -1277,11 +1210,11 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
     display: inline;
   }
 
-  .mobile-tools-toggle {
+  .tools-toggle {
     order: 1;
   }
 
-  .mobile-tools-toggle[aria-expanded="true"] {
+  .tools-toggle[aria-expanded="true"] {
     border-color: var(--teal);
     color: white;
     background: var(--teal);
@@ -1449,3 +1382,78 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
 }
 .contents-entry a:hover { color: var(--accent-dark); background: #f4efe6; }
 .contents-subtitle { display: block; margin-top: 0.25rem; color: var(--ink-soft); font-size: 0.75rem; font-weight: 400; }
+
+/* Shared Tools panel; phones anchor it above their bottom toolbar. */
+.reader-secondary-tools {
+  position: absolute;
+  z-index: 45;
+  right: 0.5rem;
+  top: calc(100% + 0.45rem);
+  display: grid;
+  width: min(20rem, calc(100% - 1rem));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  padding: 0.55rem;
+  border: 1px solid #c9c1b5;
+  border-radius: 0.45rem;
+  background: #f8f4ec;
+  box-shadow: 0 14px 38px rgb(0 0 0 / 32%);
+  max-height: calc(100dvh - 7.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.reader-actions {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  order: initial;
+  gap: 0.45rem;
+}
+
+.reader-actions .tool-button,
+.reader-secondary-tools .fullscreen-button {
+  width: 100%;
+  min-height: 2.75rem;
+  padding-inline: 0.65rem;
+}
+
+.reader-actions .tool-button span:last-child {
+  display: inline;
+}
+
+.reader-actions .thumbnails-toggle {
+  grid-column: 1 / -1;
+}
+
+.reader-secondary-tools .segmented-control,
+.reader-secondary-tools .zoom-controls {
+  display: flex;
+  width: 100%;
+  grid-column: 1 / -1;
+  order: initial;
+}
+
+.reader-secondary-tools .segmented-control button,
+.reader-secondary-tools .zoom-controls button {
+  min-height: 2.75rem;
+  flex: 1 1 0;
+}
+
+.reader-secondary-tools .fullscreen-button {
+  display: inline-flex;
+  grid-column: 1 / -1;
+  order: initial;
+}
+
+.reader-secondary-tools .fullscreen-label {
+  display: inline;
+}
+
+
+.reader-secondary-tools[hidden] { display: none; }
+.tools-toggle[aria-expanded="true"] { border-color: var(--teal); color: white; background: var(--teal); }
+.reader-secondary-tools button { appearance: none; touch-action: manipulation; }
+@media (max-width: 48rem), (max-width: 64rem) and (max-height: 32rem) {
+  .reader-secondary-tools { top: auto; bottom: calc(100% + 0.45rem); }
+}

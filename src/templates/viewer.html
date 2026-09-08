@@ -45,7 +45,7 @@
         <span aria-hidden="true">☰</span><span>Contents</span>
       </button>
 
-      <div class="reader-secondary-tools" id="reader-secondary-tools" aria-label="Additional reader tools">
+      <div class="reader-secondary-tools" id="reader-secondary-tools" role="region" aria-label="Reader tools" hidden inert>
         <div class="reader-actions">
           <button class="tool-button thumbnails-toggle" id="thumbnails-toggle" type="button" aria-expanded="false" aria-controls="thumbnail-strip" aria-label="Show page thumbnails" disabled>
             <span aria-hidden="true">▦</span><span>Thumbnails</span>
@@ -85,7 +85,7 @@
       </div>
 
       <div class="toolbar-spacer"></div>
-      <button class="tool-button mobile-tools-toggle" id="mobile-tools-toggle" type="button" aria-label="More reader tools" aria-expanded="false" aria-controls="reader-secondary-tools">
+      <button class="tool-button tools-toggle" id="tools-toggle" type="button" aria-label="Tools" aria-expanded="false" aria-controls="reader-secondary-tools">
         <span aria-hidden="true">•••</span><span>Tools</span>
       </button>
     </nav>
@@ -99,7 +99,7 @@
         </div>
         <div class="double-tap-catcher" id="double-tap-catcher" aria-hidden="true"></div>
         <div class="gesture-zoom-hud" id="gesture-zoom-hud" aria-hidden="true">100%</div>
-        <p class="sr-only" id="continuous-gesture-help">Scroll to read. On mobile, pinch or double-tap and drag vertically to zoom. Zoom buttons are in the reader controls; on mobile, open More.</p>
+        <p class="sr-only" id="continuous-gesture-help">Scroll to read. On mobile, pinch or double-tap and drag vertically to zoom. Open Tools for the zoom buttons.</p>
       </section>
 
       <div id="tify" hidden></div>
