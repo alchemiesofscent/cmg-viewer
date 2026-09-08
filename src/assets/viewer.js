@@ -1,3 +1,4 @@
+import { setupToolsMenu } from './viewer-tools.js';
 import { setupCorpusContents } from './viewer-corpus.js';
 import {
   clampZoom,
@@ -84,7 +85,7 @@ const elements = {
   thumbnailStrip: document.querySelector('#thumbnail-strip'),
   thumbnailScroller: document.querySelector('#thumbnail-scroller'),
   thumbnailList: document.querySelector('#thumbnail-list'),
-  mobileToolsToggle: document.querySelector('#mobile-tools-toggle'),
+  toolsToggle: document.querySelector('#tools-toggle'),
   secondaryTools: document.querySelector('#reader-secondary-tools'),
   live: document.querySelector('#reader-live'),
 };
@@ -135,7 +136,7 @@ const state = {
   continuousTargetIndex: null,
   continuousReady: false,
   continuousPrimaryIndex: null,
-  mobileToolsOpen: false,
+  toolsOpen: false,
   fullscreenNativeFailed: false,
   fullscreenRequestPending: false,
   fullscreenRequestKind: '',
@@ -147,6 +148,12 @@ const state = {
   sourceUrl: '',
   controller: null,
 };
+
+const toolsMenu = setupToolsMenu({
+  toggle: elements.toolsToggle,
+  panel: elements.secondaryTools,
+  onChange: (open) => { state.toolsOpen = open; },
+});
 
 const continuousTouchZoom = {
   pointers: new Map(),
@@ -1372,7 +1379,7 @@ function captureContinuousTouchPointer(pointerId) {
 function beginContinuousTouchZoom(kind, anchor) {
   clearContinuousDoubleTap();
   cancelContinuousTarget();
-  setMobileToolsOpen(false);
+  setToolsOpen(false);
   continuousTouchZoom.kind = kind;
   continuousTouchZoom.target = anchor.target;
   continuousTouchZoom.anchorX = anchor.x;
@@ -1690,7 +1697,7 @@ function updateTifyViewControls() {
 async function toggleTifyView(name) {
   if (!['info', 'export'].includes(name)) return;
   if (elements.drawer.dataset.open === 'true') closeDrawer({ restoreFocus: false });
-  setMobileToolsOpen(false);
+  setToolsOpen(false);
   if (!state.tify) {
     elements.loadingTitle.textContent = name === 'info' ? 'Opening volume information' : 'Preparing export options';
     elements.loadingDetail.textContent = 'Starting the full IIIF interface…';
@@ -1761,7 +1768,7 @@ function setMode(mode) {
   if (!['single', 'spread'].includes(mode)) return;
   cancelContinuousTouchZoom();
   if (state.mode === mode) {
-    setMobileToolsOpen(false);
+    setToolsOpen(false);
     return;
   }
   if (state.tify && ['info', 'export'].includes(textValue(state.tify.options?.view))) state.tify.setView(null);
@@ -1771,7 +1778,7 @@ function setMode(mode) {
   applyContinuousZoom();
   updateReaderSurface();
   setCurrentIndex(state.index, { scrollBehavior: 'auto' });
-  setMobileToolsOpen(false);
+  setToolsOpen(false);
   if (mode === 'spread' && !state.tify && canLoadTify()) {
     ensureTify().catch((error) => {
       console.info('TIFY unavailable; continuing with the built-in reader.', error);
@@ -2277,7 +2284,7 @@ async function enterReaderFullscreen() {
   const request = nativeFullscreenRequest();
   if (!request) {
     state.fullscreenNativeFailed = true;
-    setMobileToolsOpen(false);
+    setToolsOpen(false);
     setFocusFullscreen(true);
     return;
   }
@@ -2287,7 +2294,7 @@ async function enterReaderFullscreen() {
   syncFullscreenUi();
   try {
     const result = request.call(elements.readerApp);
-    setMobileToolsOpen(false);
+    setToolsOpen(false);
     const active = await waitForNativeFullscreen(result);
     if (requestToken !== state.fullscreenRequestToken) return;
     state.fullscreenRequestPending = false;
@@ -2304,7 +2311,7 @@ async function enterReaderFullscreen() {
     state.fullscreenRequestPending = false;
     state.fullscreenRequestKind = '';
     state.fullscreenNativeFailed = true;
-    setMobileToolsOpen(false);
+    setToolsOpen(false);
     if (!focusFullscreenActive()) setFocusFullscreen(true);
   }
 }
@@ -2314,13 +2321,13 @@ async function exitReaderFullscreen() {
   const requestToken = ++state.fullscreenRequestToken;
   beginFullscreenLayoutTransition();
   if (focusFullscreenActive() && !nativeFullscreenElement()) {
-    setMobileToolsOpen(false);
+    setToolsOpen(false);
     setFocusFullscreen(false);
     return;
   }
   const exit = nativeFullscreenExit();
   if (!exit) {
-    setMobileToolsOpen(false);
+    setToolsOpen(false);
     announce('Use the browser controls to exit full screen.');
     refreshFullscreenLayout();
     return;
@@ -2330,7 +2337,7 @@ async function exitReaderFullscreen() {
   syncFullscreenUi();
   try {
     const result = exit.call(document);
-    setMobileToolsOpen(false);
+    setToolsOpen(false);
     if (result && typeof result.then === 'function') await result;
     if (requestToken !== state.fullscreenRequestToken) return;
     state.fullscreenRequestPending = false;
@@ -2367,31 +2374,17 @@ function handleNativeFullscreenError() {
     return;
   }
   state.fullscreenNativeFailed = true;
-  setMobileToolsOpen(false);
+  setToolsOpen(false);
   if (!focusFullscreenActive()) setFocusFullscreen(true);
 }
 
-function setMobileToolsOpen(open, { restoreFocus = false } = {}) {
-  state.mobileToolsOpen = Boolean(open && mobileMedia.matches);
-  if (state.mobileToolsOpen) {
-    elements.secondaryTools.dataset.open = 'true';
-  } else {
-    elements.secondaryTools.removeAttribute('data-open');
-  }
-  elements.mobileToolsToggle.setAttribute('aria-expanded', String(state.mobileToolsOpen));
-  if (state.mobileToolsOpen) {
-    window.requestAnimationFrame(() => {
-      if (!state.mobileToolsOpen) return;
-      elements.secondaryTools.querySelector('button:not(:disabled), a[href], input:not(:disabled)')?.focus();
-    });
-  } else if (mobileMedia.matches && (restoreFocus || elements.secondaryTools.contains(document.activeElement))) {
-    elements.mobileToolsToggle.focus();
-  }
+function setToolsOpen(open, options = {}) {
+  toolsMenu.setOpen(open, options);
 }
 
 function openDrawer() {
   corpusContents.showBook();
-  setMobileToolsOpen(false);
+  setToolsOpen(false);
   if (state.tify && ['info', 'export'].includes(textValue(state.tify.options?.view))) {
     state.tify.setView(null);
     updateTifyViewControls();
@@ -2474,7 +2467,7 @@ elements.contents.addEventListener('click', (event) => {
 });
 elements.thumbnailsToggle.addEventListener('click', () => {
   setThumbnailStripOpen(!state.thumbnailsOpen, { smooth: true });
-  if (mobileMedia.matches) setMobileToolsOpen(false);
+  setToolsOpen(false);
 });
 elements.infoToggle.addEventListener('click', () => toggleTifyView('info'));
 elements.exportToggle.addEventListener('click', () => toggleTifyView('export'));
@@ -2522,13 +2515,8 @@ elements.drawerToggle.addEventListener('click', () => {
 elements.drawerClose.addEventListener('click', () => closeDrawer());
 elements.drawerBackdrop.addEventListener('click', () => closeDrawer());
 elements.retry.addEventListener('click', initialize);
-elements.mobileToolsToggle.addEventListener('click', () => setMobileToolsOpen(!state.mobileToolsOpen));
-document.addEventListener('pointerdown', (event) => {
-  if (!state.mobileToolsOpen || elements.secondaryTools.contains(event.target) || elements.mobileToolsToggle.contains(event.target)) return;
-  setMobileToolsOpen(false);
-});
 mobileMedia.addEventListener('change', () => {
-  setMobileToolsOpen(false);
+  setToolsOpen(false);
   if (!mobileMedia.matches) cancelContinuousTouchZoom();
 });
 
@@ -2583,8 +2571,9 @@ elements.tify.addEventListener('keydown', (event) => {
 }, { capture: true });
 
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && state.mobileToolsOpen) {
-    setMobileToolsOpen(false, { restoreFocus: true });
+  if (event.defaultPrevented) return;
+  if (event.key === 'Escape' && state.toolsOpen) {
+    setToolsOpen(false, { restoreFocus: true });
     return;
   }
   if (event.key === 'Escape' && elements.drawer.dataset.open === 'true') {
@@ -2612,7 +2601,7 @@ document.addEventListener('keydown', (event) => {
   }
   if (event.defaultPrevented) return;
   const target = event.target;
-  if (target.closest('input, select, textarea, a, #tify, #contents-drawer')) return;
+  if (target.closest('input, select, textarea, a, #tify, #contents-drawer, #reader-secondary-tools')) return;
   if (!mobileMedia.matches && event.key === 'ArrowLeft' && (!target.closest('button') || target.closest('.reader-toolbar'))) {
     event.preventDefault();
     movePage(-1);
