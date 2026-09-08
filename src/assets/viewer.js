@@ -1,3 +1,4 @@
+import { setupCorpusContents } from './viewer-corpus.js';
 import {
   clampZoom,
   dragZoom,
@@ -29,6 +30,7 @@ function pathVolumeId() {
 
 const BASE_URL = projectBase();
 const volumeId = pathVolumeId();
+const corpusContents = setupCorpusContents({ baseUrl: BASE_URL, volumeId });
 const VOLUME_URL = new URL(`data/volumes/${encodeURIComponent(volumeId)}.json`, BASE_URL);
 const MANIFEST_URL = new URL(`iiif/${encodeURIComponent(volumeId)}/manifest.json`, BASE_URL);
 
@@ -2387,6 +2389,7 @@ function setMobileToolsOpen(open, { restoreFocus = false } = {}) {
 }
 
 function openDrawer() {
+  corpusContents.showBook();
   setMobileToolsOpen(false);
   if (state.tify && ['info', 'export'].includes(textValue(state.tify.options?.view))) {
     state.tify.setView(null);
@@ -2593,7 +2596,7 @@ document.addEventListener('keydown', (event) => {
     return;
   }
   if (event.key === 'Tab' && elements.drawer.dataset.open === 'true') {
-    const focusable = [...elements.drawer.querySelectorAll('button:not(:disabled), a[href], input:not(:disabled)')];
+    const focusable = [...elements.drawer.querySelectorAll('button:not(:disabled), a[href], input:not(:disabled), summary')].filter((control) => control.getClientRects().length > 0);
     if (!focusable.length) return;
     const first = focusable[0];
     const last = focusable.at(-1);
@@ -2608,7 +2611,7 @@ document.addEventListener('keydown', (event) => {
   }
   if (event.defaultPrevented) return;
   const target = event.target;
-  if (target.closest('input, select, textarea, a, #tify')) return;
+  if (target.closest('input, select, textarea, a, #tify, #contents-drawer')) return;
   if (!mobileMedia.matches && event.key === 'ArrowLeft' && (!target.closest('button') || target.closest('.reader-toolbar'))) {
     event.preventDefault();
     movePage(-1);

@@ -911,7 +911,7 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   left: 0;
   display: grid;
   width: min(27rem, calc(100vw - 2rem));
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
   border-right: 1px solid var(--line);
   background: var(--surface);
   box-shadow: 15px 0 50px rgb(0 0 0 / 24%);
@@ -1414,3 +1414,43 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
     padding-inline: 0.3rem;
   }
 }
+
+
+/* The two contents scopes share one drawer and keep their own scroll position. */
+.book-contents {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.book-contents[hidden], .corpus-contents[hidden] { display: none; }
+.contents-scope {
+  min-height: 44px;
+  padding: 0.7rem 1.1rem;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  background: var(--surface);
+  text-align: left;
+  touch-action: manipulation;
+}
+.corpus-contents { min-height: 0; overflow: auto; padding: 0.5rem 1rem; }
+.corpus-contents summary {
+  min-height: 44px;
+  padding: 0.75rem 0;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  touch-action: manipulation;
+}
+.corpus-contents ul { list-style: none; margin: 0; padding: 0; }
+.corpus-contents a {
+  display: block;
+  min-height: 44px;
+  padding: 0.75rem;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+}
+.corpus-contents a span { display: block; margin-top: 0.25rem; font-size: 0.9rem; }
+.corpus-contents a[aria-current="page"] { background: var(--surface-strong, #e5e1d5); border-left: 3px solid currentColor; }
+.corpus-contents button { min-height: 44px; touch-action: manipulation; }
