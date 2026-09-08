@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 
 const commands = [
   ['scripts/python.mjs', '-m', 'unittest', 'discover', '-s', 'scripts/tests', '-p', 'test_*.py', '-v'],
-  ['--test', 'scripts/tests/test_viewer_gestures.mjs', 'scripts/tests/test_viewer_navigation.mjs', 'scripts/tests/test_viewer_loading.mjs'],
+  ['--test', 'scripts/tests/test_viewer_gestures.mjs', 'scripts/tests/test_viewer_navigation.mjs', 'scripts/tests/test_viewer_loading.mjs', 'scripts/tests/test_viewer_corpus.mjs'],
 ];
 
 for (const arguments_ of commands) {

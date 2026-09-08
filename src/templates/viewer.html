@@ -142,17 +142,21 @@
     <aside class="contents-drawer" id="contents-drawer" role="dialog" aria-modal="true" aria-labelledby="contents-heading" aria-hidden="true" inert>
       <header class="drawer-header">
         <div>
-          <p class="eyebrow">This volume</p>
+          <p class="eyebrow" id="contents-eyebrow">This volume</p>
           <h2 id="contents-heading">Contents</h2>
         </div>
         <button class="drawer-close" id="contents-close" type="button" aria-label="Close contents">×</button>
       </header>
-      <nav class="contents-list" id="contents-list" aria-label="Logical contents">
-        <p class="contents-loading">Loading contents…</p>
-      </nav>
-      <footer class="drawer-footer" id="contents-provenance" hidden>
-        Contents combine the BBAW viewer and METS record. Labels identify their source where useful.
-      </footer>
+      <button class="contents-scope" id="contents-scope" type="button" aria-controls="book-contents corpus-contents">All CMG volumes →</button>
+      <div class="book-contents" id="book-contents">
+        <nav class="contents-list" id="contents-list" aria-label="Logical contents">
+          <p class="contents-loading">Loading contents…</p>
+        </nav>
+        <footer class="drawer-footer" id="contents-provenance" hidden>
+          Contents combine the BBAW viewer and METS record. Labels identify their source where useful.
+        </footer>
+      </div>
+      <nav class="corpus-contents" id="corpus-contents" aria-label="Corpus volumes" hidden></nav>
     </aside>
 
     <div class="reader-live" id="reader-live" role="status" aria-live="polite" aria-atomic="true"></div>
