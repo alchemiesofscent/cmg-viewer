@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 from pathlib import Path
 import shutil
 import sys
@@ -160,7 +162,32 @@ def build_site(
     render_viewer_routes(source, dist, volume_ids)
     vendor_tify(tify_package, dist)
     write_pages_support(dist, base_path)
+    version_ui_assets(dist)
     return volume_ids
+
+
+def version_ui_assets(dist: Path) -> None:
+    """Give HTML and local module imports one content-derived cache version."""
+    assets = sorted(path for path in (dist / "assets").glob("*")
+                    if path.suffix in (".js", ".css"))
+    digest = hashlib.sha256()
+    for path in assets:
+        digest.update(path.name.encode())
+        digest.update(path.read_bytes())
+    version = digest.hexdigest()[:16]
+    # Include imported helper modules: versioning only viewer.js leaves its
+    # dependencies eligible for reuse from an earlier deployment.
+    for path in assets:
+        if path.suffix == ".js":
+            text = path.read_text(encoding="utf-8")
+            text = re.sub(r"(['\"])(\./[^'\"]+\.js)\1",
+                          lambda m: f"{m[1]}{m[2]}?v={version}{m[1]}", text)
+            path.write_text(text, encoding="utf-8")
+    for path in dist.rglob("*.html"):
+        text = path.read_text(encoding="utf-8")
+        text = re.sub(r'((?:src|href)=["\'])([^"\']*assets/[^"\'?]+\.(?:css|js))(["\'])',
+                      lambda m: f"{m[1]}{m[2]}?v={version}{m[3]}", text)
+        path.write_text(text, encoding="utf-8")
 
 
 def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:

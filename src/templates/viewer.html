@@ -141,13 +141,13 @@
     <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
     <aside class="contents-drawer" id="contents-drawer" role="dialog" aria-modal="true" aria-labelledby="contents-heading" aria-hidden="true" inert>
       <header class="drawer-header">
+        <button class="contents-up" id="contents-up" type="button" aria-label="Up to volumes in this series">←</button>
         <div>
           <p class="eyebrow" id="contents-eyebrow">This volume</p>
-          <h2 id="contents-heading">Contents</h2>
+          <h2 id="contents-heading" tabindex="-1">Contents</h2>
         </div>
         <button class="drawer-close" id="contents-close" type="button" aria-label="Close contents">×</button>
       </header>
-      <button class="contents-scope" id="contents-scope" type="button" aria-controls="book-contents corpus-contents">All CMG volumes →</button>
       <div class="book-contents" id="book-contents">
         <nav class="contents-list" id="contents-list" aria-label="Logical contents">
           <p class="contents-loading">Loading contents…</p>
@@ -156,7 +156,7 @@
           Contents combine the BBAW viewer and METS record. Labels identify their source where useful.
         </footer>
       </div>
-      <nav class="corpus-contents" id="corpus-contents" aria-label="Corpus volumes" hidden></nav>
+      <nav class="contents-list corpus-contents" id="corpus-contents" aria-label="Corpus volumes" hidden></nav>
     </aside>
 
     <div class="reader-live" id="reader-live" role="status" aria-live="polite" aria-atomic="true"></div>
