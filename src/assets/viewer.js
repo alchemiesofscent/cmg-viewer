@@ -1,3 +1,4 @@
+import { setupSharePanel } from './viewer-share.js';
 import { setupToolsMenu } from './viewer-tools.js';
 import { setupCorpusContents } from './viewer-corpus.js';
 import {
@@ -2520,18 +2521,15 @@ mobileMedia.addEventListener('change', () => {
   if (!mobileMedia.matches) cancelContinuousTouchZoom();
 });
 
-elements.share.addEventListener('click', async () => {
-  const title = elements.title.textContent;
-  try {
-    await navigator.clipboard.writeText(window.location.href);
-    announce('Link copied to the clipboard.');
-    const label = elements.share.querySelector('.wide-label');
-    const previous = label.textContent;
-    label.textContent = 'Copied';
-    window.setTimeout(() => { label.textContent = previous; }, 1500);
-  } catch {
-    window.prompt(`Copy a link to ${title}`, window.location.href);
-  }
+setupSharePanel({
+  toggle: elements.share,
+  panel: document.querySelector('#share-panel'),
+  field: document.querySelector('#share-link'),
+  copy: document.querySelector('#copy-view-link'),
+  close: document.querySelector('#share-close'),
+  status: document.querySelector('#share-status'),
+  getUrl: () => window.location.href,
+  clipboard: navigator.clipboard,
 });
 
 elements.fullscreen.addEventListener('click', async () => {
@@ -2601,7 +2599,7 @@ document.addEventListener('keydown', (event) => {
   }
   if (event.defaultPrevented) return;
   const target = event.target;
-  if (target.closest('input, select, textarea, a, #tify, #contents-drawer, #reader-secondary-tools')) return;
+  if (target.closest('input, select, textarea, a, #tify, #contents-drawer, #reader-secondary-tools, #share-panel')) return;
   if (!mobileMedia.matches && event.key === 'ArrowLeft' && (!target.closest('button') || target.closest('.reader-toolbar'))) {
     event.preventDefault();
     movePage(-1);

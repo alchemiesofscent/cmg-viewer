@@ -28,16 +28,26 @@
       </div>
 
       <nav class="header-actions" aria-label="Volume links">
-        <a class="header-action" id="cmg-source" href="https://cmg.bbaw.de/epubl/online/editionen.html" rel="external noopener" target="_blank" aria-label="View this page at CMG">
-          <span class="wide-label">View at CMG</span><span aria-hidden="true">↗</span>
+        <a class="header-action" id="cmg-source" href="https://cmg.bbaw.de/epubl/online/editionen.html" rel="external noopener" target="_blank" aria-label="Open this page at CMG in a new tab" title="Open this page at CMG in a new tab">
+          <span class="header-action-label">CMG</span><span aria-hidden="true">↗</span>
         </a>
         <a class="header-action source-action" href="https://github.com/alchemiesofscent/cmg-viewer" rel="external noopener" target="_blank" aria-label="View the CMG Viewer source code">
           <span class="wide-label">Source</span><span aria-hidden="true">&lt;/&gt;</span>
         </a>
-        <button class="header-action" id="share-view" type="button" aria-label="Copy a link to this view">
-          <span class="wide-label">Copy link</span><span aria-hidden="true">⌁</span>
+        <button class="header-action" id="share-view" type="button" aria-label="Share this page" aria-expanded="false" aria-controls="share-panel">
+          <span class="header-action-label">Share</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V3m-4 4 4-4 4 4M5 11v10h14V11"/></svg>
         </button>
       </nav>
+      <section class="share-panel" id="share-panel" role="region" aria-labelledby="share-heading" hidden inert>
+        <div class="share-panel-heading">
+          <h2 id="share-heading">Share this page</h2>
+          <button id="share-close" type="button" aria-label="Close sharing">×</button>
+        </div>
+        <label for="share-link">Link to this view</label>
+        <input id="share-link" type="text" readonly spellcheck="false">
+        <button class="tool-button" id="copy-view-link" type="button">Copy link</button>
+        <p id="share-status" role="status" aria-live="polite"></p>
+      </section>
     </header>
 
     <nav class="reader-toolbar" aria-label="Reader controls">
