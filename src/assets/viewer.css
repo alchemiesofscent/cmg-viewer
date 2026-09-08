@@ -1457,3 +1457,34 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
 @media (max-width: 48rem), (max-width: 64rem) and (max-height: 32rem) {
   .reader-secondary-tools { top: auto; bottom: calc(100% + 0.45rem); }
 }
+
+/* Visible sharing feedback in both layouts, including clipboard fallback. */
+.share-panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0.5rem;
+  width: min(22rem, calc(100% - 1rem));
+  max-height: calc(100dvh - 9rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 14px 38px rgb(0 0 0 / 32%);
+}
+.share-panel[hidden] { display: none; }
+.share-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.share-panel h2 { margin: 0; font-size: 1.1rem; }
+.share-panel-heading button { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: inherit; font-size: 1.5rem; }
+.share-panel label { display: block; margin-top: 0.5rem; font-size: 0.85rem; }
+.share-panel input { display: block; width: 100%; min-width: 0; margin: 0.4rem 0 0.75rem; padding: 0.6rem; font-size: 1rem; }
+.share-panel .tool-button { min-height: 44px; }
+.share-panel p { margin: 0.75rem 0 0; font-size: 0.85rem; }
+.share-panel p:empty { display: none; }
+.share-panel button, .header-action { appearance: none; touch-action: manipulation; }
+.header-action[aria-expanded="true"] { background: rgb(255 255 255 / 18%); }
+@media (max-width: 48rem), (max-width: 64rem) and (max-height: 32rem) {
+  .header-action:has(.header-action-label) { width: 3rem; flex-direction: column-reverse; gap: 0.12rem; padding: 0.2rem; }
+  .header-action-label { font-size: 0.6rem; line-height: 1.1; }
+}
