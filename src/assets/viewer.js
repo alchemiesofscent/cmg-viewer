@@ -415,6 +415,7 @@ function applyVolumeIdentity(volume, manifest) {
     `${state.pages.length.toLocaleString()} pages`,
   ].filter(Boolean);
 
+  corpusContents.setVolumeLabel(series || title);
   elements.title.textContent = title;
   elements.meta.textContent = metadata.join(' · ');
   document.title = `${title} · CMG Reader`;
@@ -2600,7 +2601,7 @@ document.addEventListener('keydown', (event) => {
     if (!focusable.length) return;
     const first = focusable[0];
     const last = focusable.at(-1);
-    if (event.shiftKey && document.activeElement === first) {
+    if (event.shiftKey && (document.activeElement === first || !focusable.includes(document.activeElement))) {
       event.preventDefault();
       last.focus();
     } else if (!event.shiftKey && document.activeElement === last) {
@@ -2699,3 +2700,6 @@ window.addEventListener('beforeunload', () => {
 
 syncFullscreenUi();
 initialize();
+
+// Volume links keep the hierarchy open at the newly selected book.
+if (new URLSearchParams(window.location.search).get('contents') === '1') openDrawer();

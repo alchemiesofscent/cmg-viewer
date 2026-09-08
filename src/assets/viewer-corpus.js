@@ -39,88 +39,122 @@ export function corpusGroups(catalogue) {
 }
 
 export function setupCorpusContents({ baseUrl, volumeId }) {
-  const toggle = document.querySelector('#contents-scope');
+  const up = document.querySelector('#contents-up');
   const book = document.querySelector('#book-contents');
   const corpus = document.querySelector('#corpus-contents');
   const heading = document.querySelector('#contents-heading');
   const eyebrow = document.querySelector('#contents-eyebrow');
-  let showingCorpus = false;
-  let loaded = false;
-  let pending = false;
+  let level = 'book';
+  let selectedGroup = null;
+  let groups = null;
+  let pending = null;
+  let failed = false;
+  let bookLabel = 'Contents';
+  const currentGroup = () => groups?.find(group => group.volumes.some(volume => volume.id === volumeId));
+
+  function row(label, detail, { href, action, current = false, marker = '›' } = {}) {
+    const item = document.createElement('li');
+    item.className = 'contents-entry';
+    const control = document.createElement(href ? 'a' : 'button');
+    if (href) control.href = href;
+    else control.type = 'button';
+    const text = document.createElement('span');
+    text.textContent = label;
+    if (detail) {
+      const subtitle = document.createElement('span');
+      subtitle.className = 'contents-subtitle';
+      subtitle.textContent = detail;
+      text.append(subtitle);
+    }
+    const arrow = document.createElement('span');
+    arrow.className = 'contents-order';
+    arrow.textContent = marker;
+    arrow.setAttribute('aria-hidden', 'true');
+    control.append(text, arrow);
+    if (current) control.setAttribute('aria-current', 'location');
+    if (action) control.addEventListener('click', action);
+    item.append(control);
+    return item;
+  }
+
+  function render({ focus = false } = {}) {
+    book.hidden = level !== 'book';
+    corpus.hidden = level === 'book';
+    up.hidden = level === 'root';
+    up.setAttribute('aria-label', level === 'book' ? 'Up to volumes in this series' : 'Up to all series');
+    up.title = up.getAttribute('aria-label');
+    const group = selectedGroup || currentGroup();
+    heading.textContent = level === 'book' ? bookLabel : level === 'root' ? 'All CMG volumes' : (group?.label || 'Volumes');
+    eyebrow.textContent = level === 'book' ? 'Contents' : level === 'root' ? 'Corpus' : 'Series';
+    if (level !== 'book') {
+      const list = document.createElement('ol');
+      if (!groups) {
+        const status = document.createElement('li');
+        status.className = 'contents-loading';
+        status.setAttribute('role', 'status');
+        status.textContent = failed ? 'Could not load the volumes.' : 'Loading volumes…';
+        list.append(status);
+        if (failed) {
+          list.append(row('Retry', '', { action: () => { void load(); heading.focus(); }, marker: '↻' }));
+          list.append(row('Open catalogue', '', { href: baseUrl.href }));
+        }
+      } else if (level === 'root' || !group) {
+        // A missing catalogue entry must still let the reader reach the corpus.
+        level = 'root';
+        up.hidden = true;
+        heading.textContent = 'All CMG volumes';
+        eyebrow.textContent = 'Corpus';
+        for (const entry of groups) {
+          list.append(row(entry.label, '', {
+            current: entry === currentGroup(),
+            action: () => { selectedGroup = entry; level = 'group'; render({ focus: true }); },
+          }));
+        }
+      } else {
+        for (const volume of group.volumes) {
+          const current = volume.id === volumeId;
+          const href = new URL(`viewer/${encodeURIComponent(volume.id)}/?contents=1`, baseUrl).href;
+          list.append(row(volume.shelfmark, volume.titles.join(' / '), current ? {
+            current: true, action: () => showBook({ focus: true }),
+          } : { href }));
+        }
+      }
+      corpus.replaceChildren(list);
+      corpus.scrollTop = 0;
+    }
+    if (focus) heading.focus({ preventScroll: true });
+  }
 
   async function load() {
-    if (loaded || pending) return;
-    pending = true;
-    corpus.setAttribute('aria-busy', 'true');
-    const status = document.createElement('p');
-    status.setAttribute('role', 'status');
-    status.textContent = 'Loading volumes…';
-    corpus.replaceChildren(status);
-    try {
-      const response = await fetch(new URL('data/catalogue.json', baseUrl));
-      if (!response.ok) throw new Error(`Catalogue request returned ${response.status}`);
-      const groups = corpusGroups(await response.json());
-      if (!groups.length) throw new Error('No volumes found');
-      const fragment = document.createDocumentFragment();
-      for (const group of groups) {
-        const details = document.createElement('details');
-        const summary = document.createElement('summary');
-        const isCurrent = group.volumes.some((volume) => volume.id === volumeId);
-        summary.textContent = `${group.label}${isCurrent ? ' · Current volume' : ''}`;
-        details.append(summary);
-        const list = document.createElement('ul');
-        for (const volume of group.volumes) {
-          const item = document.createElement('li');
-          const link = document.createElement('a');
-          link.href = new URL(`viewer/${encodeURIComponent(volume.id)}/`, baseUrl).href;
-          const label = document.createElement('strong');
-          label.textContent = volume.shelfmark;
-          const title = document.createElement('span');
-          title.textContent = volume.titles.join(' / ');
-          link.append(label, title);
-          if (volume.id === volumeId) {
-            link.setAttribute('aria-current', 'page');
-            label.append(' · Current volume');
-            link.addEventListener('click', (event) => {
-              event.preventDefault();
-              showBook();
-              toggle.focus();
-            });
-          }
-          item.append(link);
-          list.append(item);
-        }
-        details.append(list);
-        fragment.append(details);
+    if (groups || pending) return pending;
+    failed = false;
+    render();
+    pending = (async () => {
+      try {
+        const response = await fetch(new URL('data/catalogue.json', baseUrl));
+        if (!response.ok) throw new Error(`Catalogue request returned ${response.status}`);
+        const result = corpusGroups(await response.json());
+        if (!result.length) throw new Error('No volumes found');
+        groups = result;
+      } catch {
+        failed = true;
+      } finally {
+        pending = null;
+        render();
       }
-      corpus.replaceChildren(fragment);
-      loaded = true;
-    } catch {
-      status.textContent = 'The volume list could not be loaded. You can retry or open the catalogue.';
-      const retry = document.createElement('button');
-      retry.type = 'button';
-      retry.textContent = 'Retry';
-      retry.addEventListener('click', () => { toggle.focus(); void load(); });
-      const catalogue = document.createElement('a');
-      catalogue.href = baseUrl.href;
-      catalogue.textContent = 'Open catalogue';
-      corpus.append(retry, catalogue);
-    } finally {
-      pending = false;
-      corpus.removeAttribute('aria-busy');
-    }
+    })();
+    return pending;
   }
 
-  function setScope(value) {
-    showingCorpus = value;
-    book.hidden = value;
-    corpus.hidden = !value;
-    toggle.textContent = value ? '← Current book’s contents' : 'All CMG volumes →';
-    heading.textContent = value ? 'All volumes' : 'Contents';
-    eyebrow.textContent = value ? 'Entire corpus' : 'This volume';
-    if (value) void load();
-  }
-  function showBook() { setScope(false); }
-  toggle.addEventListener('click', () => setScope(!showingCorpus));
-  return { showBook };
+  function showBook(options = {}) { level = 'book'; selectedGroup = null; render(options); }
+  up.addEventListener('click', () => {
+    level = level === 'book' ? 'group' : 'root';
+    selectedGroup = null;
+    render({ focus: true });
+    void load();
+  });
+  return {
+    showBook,
+    setVolumeLabel(label) { bookLabel = label || 'Contents'; render(); },
+  };
 }
