@@ -178,6 +178,16 @@ def validate_url(url: str, *, host: str | None = None) -> urllib.parse.SplitResu
     return parsed
 
 
+def validate_tool_disclosure(route_text: str, route_path: Path) -> None:
+    require(
+        'id="tools-toggle"' in route_text
+        and 'aria-controls="reader-secondary-tools"' in route_text
+        and 'id="reader-secondary-tools"' in route_text
+        and 'id="fullscreen-notice"' in route_text,
+        f"Viewer route has no shared tool disclosure: {route_path}",
+    )
+
+
 def validate_volume(
     dist: Path,
     volume_id: str,
@@ -211,12 +221,7 @@ def validate_volume(
         and 'aria-label="Continuous page view"' in route_text,
         f"Viewer route has no accessible continuous reader: {route_path}",
     )
-    require(
-        'id="mobile-tools-toggle"' in route_text
-        and 'id="reader-secondary-tools"' in route_text
-        and 'id="fullscreen-notice"' in route_text,
-        f"Viewer route has no compact mobile tool disclosure: {route_path}",
-    )
+    validate_tool_disclosure(route_text, route_path)
     require(
         re.search(r'<button[^>]+id="fullscreen"[^>]+aria-pressed="false"', route_text) is not None,
         f"Viewer full-screen control has no pressed state: {route_path}",

@@ -1723,7 +1723,7 @@ function updatePageUi({ centerThumbnail: shouldCenterThumbnail = true, smoothThu
   const page = state.pages[state.index];
   if (!page) return;
   const visibleIndices = currentSpreadIndices();
-  elements.orderInput.value = pageInputValue(page, state.index);
+  if (document.activeElement !== elements.orderInput) elements.orderInput.value = pageInputValue(page, state.index);
   elements.orderInput.removeAttribute('min');
   elements.orderInput.removeAttribute('max');
   elements.orderInput.setCustomValidity('');
@@ -2458,7 +2458,16 @@ elements.jumpForm.addEventListener('submit', (event) => {
   }
 });
 elements.orderInput.addEventListener('input', () => elements.orderInput.setCustomValidity(''));
-elements.orderInput.addEventListener('change', goToPageFromField);
+elements.orderInput.addEventListener('focus', () => elements.orderInput.select());
+elements.orderInput.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  event.preventDefault();
+  const page = state.pages[state.index];
+  if (page) elements.orderInput.value = pageInputValue(page, state.index);
+  elements.orderInput.setCustomValidity('');
+  elements.orderInput.blur();
+  elements.stage.focus({ preventScroll: true });
+});
 elements.contents.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-page-index]');
   if (!button) return;

@@ -1488,3 +1488,22 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   .header-action:has(.header-action-label) { width: 3rem; flex-direction: column-reverse; gap: 0.12rem; padding: 0.2rem; }
   .header-action-label { font-size: 0.6rem; line-height: 1.1; }
 }
+
+/* Keep navigation together; status remains available to assistive technology. */
+.page-controls { flex: 0 0 auto; gap: 0; border: 1px solid #c9c1b5; border-radius: 0.3rem; background: white; }
+.page-controls > .tool-button.square { width: 2.75rem; min-height: 2.75rem; border: 0; border-radius: 0; background: transparent; }
+.page-controls > .tool-button:first-child { border-right: 1px solid #c9c1b5; }
+.page-controls > .tool-button:last-child { border-left: 1px solid #c9c1b5; }
+.page-controls .page-jump { gap: 0; min-width: 0; }
+.page-controls .page-jump input { width: 4rem; min-height: 2.75rem; border: 0; border-radius: 0; font-size: 1rem; padding: 0.35rem; background: transparent; }
+.page-go { min-width: 2.5rem; min-height: 2.75rem; padding: 0.35rem; border: 0; border-radius: 0; background: #edf2ef; color: var(--teal); font: inherit; font-size: 0.8rem; font-weight: 700; appearance: none; touch-action: manipulation; }
+.page-controls .page-status, .page-jump label { display: block; position: absolute; width: 1px; min-width: 0; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 48rem), (max-width: 64rem) and (max-height: 32rem) {
+  .page-controls { margin-inline: auto; }
+  .page-controls .page-jump input { width: 3rem; }
+}
+@media (max-width: 23rem) {
+  .page-controls > .tool-button.square { width: 2.5rem; }
+  .page-controls .page-jump input { width: 2.5rem; }
+  .page-go { min-width: 2rem; }
+}
