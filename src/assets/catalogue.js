@@ -386,6 +386,13 @@ function renderFilters() {
   elements.filterGroups.replaceChildren(fragment);
 }
 
+function compareAuthors(left, right) {
+  const leftBase = left.replace(/^\[(.*)\]$/, '$1');
+  const rightBase = right.replace(/^\[(.*)\]$/, '$1');
+  return leftBase.localeCompare(rightBase, undefined, { sensitivity: 'base' })
+    || Number(left.startsWith('[')) - Number(right.startsWith('['));
+}
+
 function authorCounts() {
   const counts = new Map();
   for (const item of state.items) {
@@ -470,7 +477,7 @@ function renderAuthorsMenu() {
   if (divisions.length) fragment.append(authorMenuSection('CMG divisions by author', divisions));
 
   const indexedAuthors = [...authorCounts().entries()]
-    .sort(([left], [right]) => left.localeCompare(right, undefined, { sensitivity: 'base' }))
+    .sort(([left], [right]) => compareAuthors(left, right))
     .map(([author, count]) => ({ key: 'authors', value: author, label: author, count }));
   if (indexedAuthors.length) fragment.append(authorMenuSection('All indexed authors', indexedAuthors));
 
@@ -573,7 +580,7 @@ function filteredItems() {
 
   const sorted = matched.sort((left, right) => {
     if (state.sort === 'author') {
-      return (left.authors[0] || left.title).localeCompare(right.authors[0] || right.title, undefined, { sensitivity: 'base' }) || left.title.localeCompare(right.title);
+      return compareAuthors(left.authors[0] || left.title, right.authors[0] || right.title) || left.title.localeCompare(right.title);
     }
     if (state.sort === 'year') {
       return (Number.parseInt(left.years[0], 10) || 9999) - (Number.parseInt(right.years[0], 10) || 9999) || left.title.localeCompare(right.title);

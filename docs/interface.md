@@ -37,3 +37,5 @@ Page index, layout mode and programmatic scroll target now have one owner in `vi
 ## Physical iPhone acceptance check
 
 Automated WebKit emulation does not validate the actual iOS keyboard. On a physical device: enter a Roman label and `scan 100`; confirm the field and Go remain above the keyboard, dismiss the keyboard, tap arrows rapidly, rotate both ways, and open/close Contents, Tools and Share. Confirm pinch zoom still works on the scan. This check requires device access and is not claimed as completed by CI.
+
+Reviewed bibliographic corrections live in `config/metadata-corrections.json` and are applied to catalogue and volume records during every build, after restoring or generating the corpus. Their field-level provenance records the supplied attribution and publication date. They survive a new corpus snapshot without changing the source citation or promoting editorial roles to authorship. Bracketed author labels sort immediately after their unbracketed counterpart in ascending author order and the author menu.

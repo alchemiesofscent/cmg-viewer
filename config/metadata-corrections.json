@@ -1,0 +1,8 @@
+{
+  "diels_01": {"authors": ["Diels"], "years": ["1906"], "evidence": "Sean Coughlin: Die Handschriften der antiken Ärzte. Griechische Abteilung, Berlin 1906."},
+  "diels_02": {"authors": ["Diels"], "years": ["1905"], "evidence": "Sean Coughlin: Die Handschriften der antiken Ärzte, I. Teil: Hippokrates und Galenos, Berlin 1905."},
+  "diels_03": {"authors": ["Diels"], "years": ["1906"], "evidence": "Sean Coughlin: Die Handschriften der antiken Ärzte, II. Teil, Berlin 1906."},
+  "diels_04": {"authors": ["Diels"], "years": ["1908"], "evidence": "Sean Coughlin: Bericht über den Stand des interakademischen Corpus Medicorum Antiquorum und Erster Nachtrag, Berlin 1908."},
+  "cmg_05_13_02": {"authors": ["[Galen]"], "evidence": "Sean Coughlin: retain bracketed attribution for [Galeni] Definitiones medicas (2023)."},
+  "suppl_06": {"authors": ["Kollesch"], "evidence": "Sean Coughlin: Jutta Kollesch is the author of Kleine Schriften zur antiken Medizin (2019)."}
+}

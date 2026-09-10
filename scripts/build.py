@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble the static GitHub Pages artifact without touching generated data."""
+"""Assemble the static GitHub Pages artifact with reviewed metadata corrections applied to the saved corpus."""
 
 from __future__ import annotations
 
@@ -11,6 +11,11 @@ from pathlib import Path
 import shutil
 import sys
 from typing import Any
+
+try:
+    from .metadata_corrections import apply_corrections
+except ImportError:
+    from metadata_corrections import apply_corrections
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -158,6 +163,7 @@ def build_site(
 ) -> list[str]:
     clear_owned_ui(dist)
     copy_source_tree(source, dist)
+    apply_corrections(dist)
     volume_ids = configured_volume_ids(dist)
     render_viewer_routes(source, dist, volume_ids)
     vendor_tify(tify_package, dist)
