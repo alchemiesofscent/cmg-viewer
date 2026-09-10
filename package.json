@@ -12,7 +12,8 @@
     "build": "node scripts/python.mjs scripts/build.py",
     "validate": "node scripts/python.mjs scripts/validate.py",
     "test": "node scripts/test.mjs",
-    "serve": "node scripts/python.mjs scripts/serve.py --port 8000"
+    "serve": "node scripts/python.mjs scripts/serve.py --port 8000",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "tify": "0.35.0"
@@ -20,5 +21,8 @@
   "engines": {
     "node": ">=20",
     "pnpm": ">=11"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
   }
 }
