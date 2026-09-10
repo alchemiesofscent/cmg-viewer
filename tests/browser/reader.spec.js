@@ -353,3 +353,26 @@ test('PDF export failure and cancellation leave retry available without partial 
   await expect(page.locator('#export-status')).toContainText('cancelled');
   await expect(page.locator('#export-download')).toBeHidden();
 });
+
+test('desktop Shift-wheel zooms around the pointer while ordinary wheel scrolls', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Desktop-only shortcut');
+  const frame = page.locator('#continuous-reader figure').first();
+  const box = await frame.boundingBox();
+  const x = box.x + box.width / 2, y = Math.max(150, box.y + 180);
+  await page.mouse.move(x, y);
+  const before = await frame.boundingBox();
+  await page.keyboard.down('Shift');
+  await page.mouse.wheel(0, -100);
+  await page.keyboard.up('Shift');
+  await expect.poll(async () => Number(await page.locator('#continuous-reader').getAttribute('data-reader-zoom'))).toBeGreaterThan(1);
+  const after = await frame.boundingBox();
+  const oldFraction = (y - before.y) / before.height;
+  expect(Math.abs(after.y + oldFraction * after.height - y)).toBeLessThan(3);
+  const zoom = await page.locator('#continuous-reader').getAttribute('data-reader-zoom');
+  await page.mouse.wheel(0, 100);
+  await expect(page.locator('#continuous-reader')).toHaveAttribute('data-reader-zoom', zoom);
+  await page.keyboard.down('Shift');
+  await page.mouse.wheel(0, 100);
+  await page.keyboard.up('Shift');
+  await expect.poll(async () => Number(await page.locator('#continuous-reader').getAttribute('data-reader-zoom'))).toBeLessThan(Number(zoom));
+});
