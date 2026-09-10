@@ -90,10 +90,14 @@ setup.
 
 ## License
 
-CMG Viewer is released under the [GNU Affero General Public License v3.0](LICENSE).
-The generated site also includes TIFY 0.35.0 under the same license family; see
-[the third-party notices](THIRD_PARTY_NOTICES.md). Catalogue records and page
-images remain linked to their BBAW sources and are not relicensed here.
+Original CMG Reader code by Sean Coughlin is available under the [MIT License](LICENSE).
+Original written content by Sean Coughlin is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+These grants exclude third-party material. TIFY remains AGPL-3.0; the combined
+application distributed with TIFY remains subject to its AGPL requirements.
+PDF-LIB remains MIT. See [third-party notices](THIRD_PARTY_NOTICES.md).
+Catalogue records and page images retain their existing rights and are not relicensed here.
+
+Credits and funding are published on the [About page](https://alchemiesofscent.github.io/cmg-viewer/about.html).
 
 ## Regression checks and releases
 

@@ -17,3 +17,5 @@ generated site also publishes TIFY's license text beside the vendored assets.
 ## PDF-LIB
 
 PDF-LIB 1.17.1 (MIT), https://github.com/Hopding/pdf-lib, is self-hosted and loaded only when creating a PDF. Its license ships beside the vendored module.
+
+The MIT grant for original CMG Reader code does not relicense TIFY. The combined application distributed with TIFY remains subject to AGPL requirements. BBAW catalogue records and scans are excluded from both the project MIT grant and its CC BY-SA written-content grant.
