@@ -62,3 +62,49 @@ test('thumbnail failure leaves the frame available for the reading image', () =>
   assert.equal(frame.dataset.preview, undefined);
   cancel();
 });
+
+import { createContinuousImages } from '../../src/assets/viewer-images.js';
+import { createLoadingMetrics } from '../../src/assets/viewer-metrics.js';
+
+function readerImages() {
+  const images = [];
+  const frame = { dataset: {}, children: [], getBoundingClientRect: () => ({ width: 700 }),
+    prepend(image) { this.children.unshift(image); }, removeAttribute() {} };
+  const state = { zoom: 1, index: 0, pages: [{ service: 'https://example.org/iiif/page', width: 1600 }],
+    continuousEntries: [{ frame }], continuousLoadedIndices: new Set() };
+  const controller = createContinuousImages({ state, elements: { continuousScroll: { clientWidth: 700 } },
+    loadingMetrics: createLoadingMetrics(), sourcePageLabel: () => '', pageDisplay: () => 'Page 1',
+    devicePixelRatio: () => 1, createImage: () => {
+      const image = { handlers: {}, addEventListener(name, handler) { this.handlers[name] = handler; },
+        removeAttribute(name) { delete this[name]; }, remove() {}, decode: async () => {} };
+      images.push(image); return image;
+    } });
+  return { state, frame, images, ...controller };
+}
+
+test('released image cannot return after a delayed decode', async () => {
+  const fixture = readerImages();
+  fixture.hydrateContinuousImage(0);
+  const image = fixture.images[0];
+  let finishDecode;
+  image.decode = () => new Promise(resolve => { finishDecode = resolve; });
+  const loading = image.handlers.load();
+  fixture.releaseContinuousImage(0);
+  finishDecode(); await loading;
+  assert.equal(fixture.frame.children.length, 0);
+  assert.equal(fixture.state.continuousLoadedIndices.size, 0);
+});
+
+test('zoom replacement retains the old image until the sharper image decodes', async () => {
+  const fixture = readerImages();
+  fixture.hydrateContinuousImage(0);
+  await fixture.images[0].handlers.load();
+  assert.match(fixture.images[0].src, /full\/800,/);
+  fixture.state.zoom = 2;
+  fixture.frame.getBoundingClientRect = () => ({ width: 1500 });
+  fixture.hydrateContinuousImage(0);
+  assert.equal(fixture.state.continuousEntries[0].image, fixture.images[0]);
+  await fixture.images[1].handlers.load();
+  assert.equal(fixture.state.continuousEntries[0].image, fixture.images[1]);
+  assert.equal(fixture.images[0].src, undefined);
+});

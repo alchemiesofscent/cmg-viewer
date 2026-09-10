@@ -69,3 +69,22 @@ Live GitHub Pages / BBAW images, cloud Chrome, CMG I 1; unthrottled browser. The
 | Jump to previously unopened scan 100 | First image observed after 3,067 ms; sharp 1200px image confirmed at 3,078 ms |
 
 The distant image loaded sharply without a prolonged preview stage. Retain browser HTTP caching and high priority for the active scan, with low-priority neighbouring images; these observations do not justify a service worker or wider eager prefetching. The metrics API now records `first-visible-page` and `first-sharp-page` from reader initialization, alongside image request/decode durations. “Sharp” means the requested reading resolution, excluding thumbnail fallback; image insertion is measured, not physical screen paint. Real iPhone/network conditions remain distinct from this cloud sample.
+
+## Repeatable live measurements
+
+`pnpm exec playwright test --config playwright.performance.config.js` measures
+CMG I 1 and CMG V 2,1 on desktop Chromium and an emulated Pixel 7 with 100 ms
+latency and 1.6 Mbps download throughput. Each profile records three cold-cache
+and three warm-cache loads. The separate **Live reading measurements** workflow
+runs weekly and manually; its JSON attachments retain every sample for 30 days.
+A timeout fails the measurement run and preserves completed samples. It does not
+trigger catalogue synchronization or gate the interface deployment workflow.
+The benchmark targets the published site, including when run from a PR.
+
+Compare first-visible and first-sharp medians within the same profile, alongside
+individual samples; do not treat one upstream slowdown as an interface regression.
+Milestones represent decoded image insertion, not a hardware paint measurement.
+Resource transfer bytes may be unavailable without upstream Timing-Allow-Origin.
+The retained pixel-byte estimate is width × height × 4 for attached reader images,
+not browser process memory or a peak-memory measurement. Device emulation does not
+reproduce a physical iPhone's keyboard, CPU, or GPU.

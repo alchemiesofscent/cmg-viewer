@@ -101,3 +101,18 @@ and unavailable METS tail pages can be omitted only when both the live viewer
 and directory inventory end at the same order. Duplicate logical IDs and
 dangling logical pointers are retained as source warnings. Every such decision
 is written into the normalized volume provenance.
+
+## Reader responsibility boundaries
+
+`viewer-position.js` owns the current page, layout and programmatic scroll target.
+`viewer-images.js` owns continuous image requests, priority, preview replacement,
+decode races, retry backoff and release of distant images. It accepts the shared
+reader state rather than keeping a competing page index. Its injected image and
+clock dependencies permit deterministic lifecycle tests.
+
+`viewer-data.js` normalizes source pages and contents; `viewer-reference.js`
+resolves scholarly labels and citations; `viewer-progress.js` persists reading
+positions. Corpus navigation, tools, sharing, keyboard accommodation and loading
+metrics each have their own module. `viewer.js` coordinates DOM rendering,
+scroll/gesture events, fullscreen and TIFY integration. Further extraction can be
+incremental; it should not introduce another authoritative navigation state.
