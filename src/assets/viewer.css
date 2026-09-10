@@ -911,7 +911,7 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   left: 0;
   display: grid;
   width: min(27rem, calc(100vw - 2rem));
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   border-right: 1px solid var(--line);
   background: var(--surface);
   box-shadow: 15px 0 50px rgb(0 0 0 / 24%);
