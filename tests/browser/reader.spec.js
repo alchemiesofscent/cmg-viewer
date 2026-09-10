@@ -207,3 +207,39 @@ test('blocked position storage does not prevent reading; timings remain local', 
   expect(names).toContain('volume-json');
   expect(names).toContain('manifest-json');
 });
+
+test('either metadata source can fail while the other keeps the volume readable', async ({ page }) => {
+  for (const path of ['**/data/volumes/*.json', '**/iiif/*/manifest.json']) {
+    await page.route(path, route => route.fulfill({ status: 503, body: 'Unavailable' }));
+    await page.goto('viewer/fixture_a/?pn=1');
+    await expect(page.locator('#reader-loading')).toBeHidden();
+    await expect(page.locator('#reader-error')).toBeHidden();
+    await expect(page.locator('#continuous-pages [data-page-index="0"] img').first()).toBeVisible();
+    await page.locator('#next-page').click();
+    await expect(page).toHaveURL(/pn=2/);
+    await page.unroute(path);
+  }
+});
+
+test('failed page images do not block navigation to a healthy page', async ({ page }) => {
+  await page.route('**/fixture-page.svg?page=1', route => route.fulfill({ status: 503, body: 'Unavailable' }));
+  await page.goto('viewer/fixture_a/?pn=1');
+  await expect(page.locator('#continuous-pages [data-page-index="0"] .continuous-image-frame')).toHaveAttribute('data-image-failed', 'true');
+  await page.locator('#next-page').click();
+  await expect(page).toHaveURL(/pn=2/);
+  await expect(page.locator('#continuous-pages [data-page-index="1"] img').first()).toBeVisible();
+});
+
+test('Retry recovers after both metadata sources fail', async ({ page }) => {
+  let unavailable = true;
+  const handler = route => unavailable ? route.fulfill({ status: 503, body: 'Unavailable' }) : route.fallback();
+  await page.route('**/data/volumes/*.json', handler);
+  await page.route('**/iiif/*/manifest.json', handler);
+  await page.goto('viewer/fixture_a/?pn=1');
+  await expect(page.locator('#reader-error')).toBeVisible();
+  unavailable = false;
+  await page.locator('#retry-reader').click();
+  await expect(page.locator('#reader-error')).toBeHidden();
+  await expect(page.locator('#continuous-reader')).toBeVisible();
+  await expect(page.locator('#continuous-pages [data-page-index="0"] img').first()).toBeVisible();
+});
