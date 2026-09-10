@@ -231,6 +231,13 @@ function extractItems(data) {
   return items.map(normalizeItem).filter((item) => item.volumeId);
 }
 
+function syncSortDirection() {
+  const descending = state.direction === 'desc';
+  elements.direction.setAttribute('aria-pressed', String(descending));
+  elements.direction.title = descending ? 'Descending order; switch to ascending' : 'Ascending order; switch to descending';
+  elements.direction.querySelector('span').textContent = descending ? '↓' : '↑';
+}
+
 function readUrlState() {
   const params = new URLSearchParams(window.location.search);
   state.query = params.get('q')?.trim() || '';
@@ -238,7 +245,7 @@ function readUrlState() {
   elements.search.value = state.query;
   elements.sort.value = state.sort;
   state.direction = ['asc', 'desc'].includes(params.get('order')) ? params.get('order') : (state.sort === 'relevance' ? 'desc' : 'asc');
-  elements.direction.value = state.direction;
+  syncSortDirection();
 
   for (const definition of filterDefinitions) {
     state.filters[definition.key] = new Set(params.getAll(definition.queryKey).filter(Boolean));
@@ -520,7 +527,7 @@ function browseBy(key, value) {
   if (!clearSelection) state.filters[key].add(value);
   state.sort = 'series';
   state.direction = 'asc';
-  elements.direction.value = state.direction;
+  syncSortDirection();
   elements.sort.value = state.sort;
   closeAuthorsMenu({ restoreFocus: false });
   refresh({ filters: true });
@@ -767,7 +774,7 @@ function resetAll() {
   elements.search.value = '';
   state.sort = 'series';
   state.direction = 'asc';
-  elements.direction.value = state.direction;
+  syncSortDirection();
   elements.sort.value = state.sort;
   filterDefinitions.forEach(({ key }) => state.filters[key].clear());
   refresh({ filters: true });
@@ -820,10 +827,10 @@ elements.clearSearch.addEventListener('click', () => {
 elements.sort.addEventListener('change', () => {
   state.sort = elements.sort.value;
   state.direction = state.sort === 'relevance' ? 'desc' : 'asc';
-  elements.direction.value = state.direction;
+  syncSortDirection();
   refresh();
 });
-elements.direction.addEventListener('change', () => { state.direction = elements.direction.value; refresh(); });
+elements.direction.addEventListener('click', () => { state.direction = state.direction === 'asc' ? 'desc' : 'asc'; syncSortDirection(); refresh(); });
 elements.filterGroups.addEventListener('change', (event) => {
   const input = event.target.closest('input[data-filter-key]');
   if (!input) return;
