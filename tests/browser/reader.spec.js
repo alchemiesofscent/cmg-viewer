@@ -48,9 +48,12 @@ test('tools, thumbnails and Escape restore focus', async ({ page }) => {
   await page.locator('#thumbnails-toggle').click();
   if (initiallyOpen) await expect(page.locator('#thumbnail-strip')).toBeHidden();
   else await expect(page.locator('#thumbnail-strip')).toBeVisible();
+  await expect(page.locator('#reader-secondary-tools')).toBeHidden();
+  await page.locator('#tools-toggle').click();
   await page.locator('#thumbnails-toggle').click();
   if (initiallyOpen) await expect(page.locator('#thumbnail-strip')).toBeVisible();
   else await expect(page.locator('#thumbnail-strip')).toBeHidden();
+  await page.locator('#tools-toggle').click();
   await page.keyboard.press('Escape');
   await expect(page.locator('#reader-secondary-tools')).toBeHidden();
   await expect(page.locator('#tools-toggle')).toBeFocused();
