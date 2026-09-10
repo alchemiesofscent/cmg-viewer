@@ -16,6 +16,7 @@
     "test:browser": "playwright test"
   },
   "dependencies": {
+    "pdf-lib": "1.17.1",
     "tify": "0.35.0"
   },
   "engines": {

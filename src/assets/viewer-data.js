@@ -105,6 +105,7 @@ export function normalizePages(volume, manifest) {
       order,
       label,
       canvasId,
+      derivative: textValue(record.maxDerivativeUrl),
       service: imageServiceUrl(record, canvas),
       image: imageUrl(record, canvas),
       thumbnail: thumbnailUrl(record, canvas),

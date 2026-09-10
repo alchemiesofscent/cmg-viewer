@@ -39,3 +39,22 @@ Page index, layout mode and programmatic scroll target now have one owner in `vi
 Automated WebKit emulation does not validate the actual iOS keyboard. On a physical device: enter a Roman label and `scan 100`; confirm the field and Go remain above the keyboard, dismiss the keyboard, tap arrows rapidly, rotate both ways, and open/close Contents, Tools and Share. Confirm pinch zoom still works on the scan. This check requires device access and is not claimed as completed by CI.
 
 Reviewed bibliographic corrections live in `config/metadata-corrections.json` and are applied to catalogue and volume records during every build, after restoring or generating the corpus. Their field-level provenance records the supplied attribution and publication date. They survive a new corpus snapshot without changing the source citation or promoting editorial roles to authorship. Bracketed author labels sort immediately after their unbracketed counterpart in ascending author order and the author menu.
+
+## PDF export
+
+Tools → Export opens a native modal for the current page or an inclusive range.
+Printed labels (including Roman numerals) must match uniquely; `scan N` explicitly
+selects physical position. The panel previews scan endpoints and page count.
+Exports are limited to 50 pages and 64 MiB of source image data. Downloads run
+sequentially, have a 45-second per-page timeout and can be cancelled. A failed
+page prevents any partial file from being offered. Retry restarts the export.
+
+The original CMG single-page PDF opens separately, using the preserved derivative
+filename. BBAW's PDF responses currently lack Access-Control-Allow-Origin, so
+combining those original files in this static site is not possible. Generated
+PDFs instead embed BBAW's CORS-enabled IIIF JPEGs at up to 2400 pixels wide (never
+above the recorded source width), without additional recompression or cropping.
+They have no OCR text layer. PDF metadata includes the volume title and reader
+source URL. A lazy-loaded, self-hosted PDF-LIB dependency creates the file; no
+third-party export service receives the selection. Save PDF and supported native
+file sharing require an explicit tap after preparation, including on iOS.

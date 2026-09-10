@@ -1,3 +1,4 @@
+import { setupPdfExport } from './viewer-export.js';
 import { createContinuousImages } from './viewer-images.js';
 import { createReaderPosition } from './viewer-position.js';
 import { textValue, listValue, integerValue, arrayValue } from './viewer-values.js';
@@ -1284,13 +1285,13 @@ function canLoadTify() {
 }
 
 function updateTifyViewControls() {
+  elements.exportToggle.disabled = !state.pages.length;
   const canStart = canLoadTify();
   const enabled = Boolean(state.tify || (canStart && !state.tifyPromise));
   const view = state.tify ? textValue(state.tify.options?.view) : '';
   state.tifyView = view;
   for (const [name, button, label] of [
     ['info', elements.infoToggle, 'volume information'],
-    ['export', elements.exportToggle, 'export options'],
   ]) {
     const active = view === name;
     button.disabled = !enabled;
@@ -2071,7 +2072,13 @@ elements.thumbnailsToggle.addEventListener('click', () => {
   setToolsOpen(false);
 });
 elements.infoToggle.addEventListener('click', () => toggleTifyView('info'));
-elements.exportToggle.addEventListener('click', () => toggleTifyView('export'));
+setupPdfExport({
+  toggle: elements.exportToggle, dialog: document.querySelector('#pdf-export'),
+  getState: () => ({ pages: [...state.pages], index: state.index, id: volumeId,
+    title: document.querySelector('#volume-title').textContent, url: currentViewUrl() }),
+  beforeOpen: () => setToolsOpen(false),
+  restoreFocus: () => elements.toolsToggle?.focus(),
+});
 elements.thumbnailScroller.addEventListener('wheel', (event) => {
   if (elements.thumbnailScroller.scrollWidth <= elements.thumbnailScroller.clientWidth) return;
   const rawDelta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
@@ -2180,7 +2187,7 @@ elements.tify.addEventListener('keydown', (event) => {
 }, { capture: true });
 
 document.addEventListener('keydown', (event) => {
-  if (event.defaultPrevented) return;
+  if (event.defaultPrevented || document.querySelector('#pdf-export').open) return;
   if (event.key === 'Escape' && state.toolsOpen) {
     setToolsOpen(false, { restoreFocus: true });
     return;
@@ -2208,7 +2215,7 @@ document.addEventListener('keydown', (event) => {
     }
     return;
   }
-  if (event.defaultPrevented) return;
+  if (event.defaultPrevented || document.querySelector('#pdf-export').open) return;
   const target = event.target;
   if (target.closest('input, select, textarea, a, #tify, #contents-drawer, #reader-secondary-tools, #share-panel')) return;
   if (!mobileMedia.matches && event.key === 'ArrowLeft' && (!target.closest('button') || target.closest('.reader-toolbar'))) {

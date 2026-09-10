@@ -167,6 +167,11 @@ def build_site(
     volume_ids = configured_volume_ids(dist)
     render_viewer_routes(source, dist, volume_ids)
     vendor_tify(tify_package, dist)
+    pdf_source = PROJECT_ROOT / "node_modules" / "pdf-lib" / "dist" / "pdf-lib.esm.min.js"
+    pdf_target = dist / "assets" / "vendor" / "pdf-lib"
+    pdf_target.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(pdf_source, pdf_target / pdf_source.name)
+    shutil.copy2(pdf_source.parent.parent / "LICENSE.md", pdf_target / "LICENSE.md")
     write_pages_support(dist, base_path)
     version_ui_assets(dist)
     return volume_ids
