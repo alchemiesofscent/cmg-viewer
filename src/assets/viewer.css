@@ -1556,3 +1556,5 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
 .pdf-export .tool-button { min-height: 44px; text-decoration: none; padding: .6rem .8rem; }
 .pdf-export [hidden] { display: none !important; }
 .pdf-export button { touch-action: manipulation; }
+
+.reader-credit { flex-basis: 100%; grid-column: 1 / -1; font-size: .8rem; line-height: 1.5; padding-top: .5rem; border-top: 1px solid var(--line); }
