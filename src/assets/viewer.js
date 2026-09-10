@@ -570,12 +570,18 @@ function setThumbnailStripOpen(open, { smooth = false } = {}) {
   if (state.thumbnailsOpen) centerThumbnail(state.index, { smooth });
 }
 
-function updateAddress() {
+function currentViewUrl() {
   const page = state.pages[state.index];
-  if (!page) return;
+  if (!page) return window.location.href;
   const url = new URL(window.location.href);
   url.searchParams.set('pn', String(page.order));
   url.searchParams.set('view', state.mode);
+  return url.href;
+}
+
+function updateAddress() {
+  if (!state.pages[state.index]) return;
+  const url = new URL(currentViewUrl());
   try {
     history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   } catch (error) {
@@ -2263,7 +2269,7 @@ setupSharePanel({
   copy: document.querySelector('#copy-view-link'),
   close: document.querySelector('#share-close'),
   status: document.querySelector('#share-status'),
-  getUrl: () => window.location.href,
+  getUrl: currentViewUrl,
   reference: document.querySelector('#share-reference'),
   citation: document.querySelector('#share-citation'),
   copyCitation: document.querySelector('#copy-citation'),
@@ -2273,7 +2279,7 @@ setupSharePanel({
   },
   getCitation: () => {
     const page = state.pages[state.index];
-    return page ? pageCitation({ title: elements.title.textContent, label: sourcePageLabel(page), order: page.order, index: state.index, url: window.location.href }) : '';
+    return page ? pageCitation({ title: elements.title.textContent, label: sourcePageLabel(page), order: page.order, index: state.index, url: currentViewUrl() }) : '';
   },
   clipboard: navigator.clipboard,
 });
