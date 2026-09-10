@@ -883,3 +883,8 @@ body.authors-menu-open {
 
 .results-heading { flex-wrap: wrap; gap: .75rem; }
 .sort-control select { min-height: 2.75rem; font-size: 1rem; max-width: 100%; }
+
+.sort-controls { display: flex; align-items: center; gap: .35rem; margin-left: auto; max-width: 100%; }
+.sort-controls .sort-control { min-width: 0; }
+.sort-direction { display: inline-grid; place-items: center; flex: 0 0 2.75rem; width: 2.75rem; height: 2.75rem; padding: 0; border: 1px solid var(--line); border-radius: .2rem; color: var(--ink); background: var(--surface); font: inherit; font-size: 1.25rem; cursor: pointer; touch-action: manipulation; }
+.sort-direction:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }

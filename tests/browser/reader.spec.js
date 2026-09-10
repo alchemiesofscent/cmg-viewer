@@ -297,11 +297,11 @@ test('delayed programmatic scrolling ignores old scroll-end events', async ({ pa
    await expect(page.locator('#loading-results')).toBeHidden();
    const before = await page.locator('.result-card').evaluateAll(cards => cards.map(card => card.dataset.itemId));
    expect(before.length).toBeGreaterThan(1);
-   await page.locator('#sort-direction').selectOption('desc');
+   await page.locator('#sort-direction').click();
    await expect(page).toHaveURL(/order=desc/);
    await expect.poll(() => page.locator('.result-card').evaluateAll(cards => cards.map(card => card.dataset.itemId))).toEqual([...before].reverse());
    await page.reload();
-   await expect(page.locator('#sort-direction')).toHaveValue('desc');
+   await expect(page.locator('#sort-direction')).toHaveAttribute('aria-pressed', 'true');
    await expect(page.locator('#loading-results')).toBeHidden();
    await expect.poll(() => page.locator('.result-card').evaluateAll(cards => cards.map(card => card.dataset.itemId))).toEqual([...before].reverse());
  });
