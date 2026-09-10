@@ -921,7 +921,10 @@ function cancelContinuousTarget() {
   scheduleContinuousPageSync();
 }
 
+let continuousScrollRequest = 0;
+
 function scrollToContinuousPage(index, { behavior } = {}) {
+  const request = ++continuousScrollRequest;
   const entry = state.continuousEntries[index];
   if (!entry || elements.continuousReader.hidden) return;
   const distance = Math.abs(index - currentContinuousIndex());
@@ -938,13 +941,14 @@ function scrollToContinuousPage(index, { behavior } = {}) {
     behavior: scrollBehavior,
   });
   window.setTimeout(() => {
-    if (state.continuousTargetIndex === index) cancelContinuousTarget();
+    if (request === continuousScrollRequest && state.continuousTargetIndex === index) cancelContinuousTarget();
   }, scrollBehavior === 'smooth' ? 800 : 0);
 }
 
 function activateContinuousReader(index, { behavior } = {}) {
   if (elements.continuousReader.hidden) return;
   window.requestAnimationFrame(() => {
+    if (index !== state.index) return;
     scrollToContinuousPage(index, { behavior });
     if (!state.continuousReady) {
       observeContinuousImages();
@@ -1496,7 +1500,7 @@ function syncTifyPages() {
   syncTifyPageSelection(state.tify, spreadPageNumbers());
 }
 
-function setCurrentIndex(index, { updateViewer = true, speak = true, scrollBehavior } = {}) {
+function setCurrentIndex(index, { updateViewer = true, speak = true, scrollBehavior = 'auto' } = {}) {
   const nextIndex = Math.max(0, Math.min(state.pages.length - 1, index));
   state.index = nextIndex;
   updateContinuousSelection(nextIndex);
