@@ -58,3 +58,14 @@ console.table(window.cmgLoadingTimings())
 Each completed record has `name`, `status`, `startMs` relative to reader initialization and `durationMs`. The last 100 records are retained; reinitializing clears them. Records include volume/manifest JSON fetch and parsing, preview load, continuous reading-image load plus decode, and TIFY assets/initialization. Reading-image records also identify scan position, requested width and whether the request was primary. A thumbnail substituted after an image error is marked `thumbnail-fallback`; it is not counted as a full reading-image success. Cancelled/replaced image requests that never display do not produce success records.
 
 These are elapsed client-side durations, including network, server, decoding and scheduling costs. They do not separate BBAW processing from connection latency, and TIFY readiness is not proof that all spread image tiles have loaded. No scan URLs, catalogue metadata or timing records are sent to an analytics service. Compare fresh loads and repeat loads under the same connection and device before drawing performance conclusions.
+
+## Reader observations — 2026-09-10
+
+Live GitHub Pages / BBAW images, cloud Chrome, CMG I 1; unthrottled browser. These are single-session observations including automation/transport overhead, not representative population benchmarks:
+
+| Action | Observation |
+| --- | --- |
+| Initial opening at scan 2 | First preview observed after 2,358 ms |
+| Jump to previously unopened scan 100 | First image observed after 3,067 ms; sharp 1200px image confirmed at 3,078 ms |
+
+The distant image loaded sharply without a prolonged preview stage. Retain browser HTTP caching and high priority for the active scan, with low-priority neighbouring images; these observations do not justify a service worker or wider eager prefetching. The metrics API now records `first-visible-page` and `first-sharp-page` from reader initialization, alongside image request/decode durations. “Sharp” means the requested reading resolution, excluding thumbnail fallback; image insertion is measured, not physical screen paint. Real iPhone/network conditions remain distinct from this cloud sample.

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { corpusGroups } from '../../src/assets/viewer-corpus.js';
+import { corpusGroups, filterCorpusGroups } from '../../src/assets/viewer-corpus.js';
 const item = (volumeId, collection, seriesNumber, label = volumeId) => ({ volumeId, collection, seriesNumber, label });
 
 test('orders CMG divisions numerically and collections bibliographically', () => {
@@ -123,4 +123,12 @@ test('returning to the book during a pending request keeps the book visible', as
   assert.equal(nodes['book-contents'].hidden, false);
   assert.equal(nodes['corpus-contents'].hidden, true);
   assert.equal(nodes['contents-heading'].textContent, 'CMG V 1');
+});
+
+test('corpus search retains hierarchy and matches accents, authors and shelfmarks', () => {
+ const groups = corpusGroups({ items: [{ volumeId: 'a', collection: 'CMG', seriesNumber: 'VIII 1', title: 'Medical books', authors: ['Aëtius'] }, { volumeId: 'b', collection: 'CMG', seriesNumber: 'V 1', label: 'Galen' }] });
+ assert.deepEqual(filterCorpusGroups(groups, 'aetius VIII').map(g => g.label), ['CMG VIII']);
+ assert.equal(filterCorpusGroups(groups, 'medical')[0].volumes[0].id, 'a');
+ assert.deepEqual(filterCorpusGroups(groups, 'missing'), []);
+ assert.equal(groups.length, 2);
 });

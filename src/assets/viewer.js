@@ -1,3 +1,4 @@
+import { createReaderPosition } from './viewer-position.js';
 import { textValue, listValue, integerValue, arrayValue } from './viewer-values.js';
 import { normalizePages, sourceLink, manifestLabel, buildToc } from './viewer-data.js';
 import { createProgressStore, initialPageIndex } from './viewer-progress.js';
@@ -42,10 +43,11 @@ const loadingMetrics = createLoadingMetrics();
 window.cmgLoadingTimings = () => loadingMetrics.snapshot();
 let savedPageOrder = null;
 let progressTimer = null;
+let clearedPageOrder = null;
 function flushProgress() {
   window.clearTimeout(progressTimer);
   progressTimer = null;
-  if (savedPageOrder != null) progress.save(volumeId, savedPageOrder);
+  if (savedPageOrder != null && savedPageOrder !== clearedPageOrder) progress.save(volumeId, savedPageOrder);
 }
 const BASE_URL = projectBase();
 const volumeId = pathVolumeId();
@@ -124,13 +126,16 @@ const TAP_MAX_TRAVEL = 12;
 const DOUBLE_TAP_MAX_DISTANCE = 48;
 const CONTINUOUS_IMAGE_RETRY_DELAY = 10000;
 
+const position = createReaderPosition(new URLSearchParams(window.location.search).get('view'));
 const state = {
   volume: {},
   manifest: null,
   pages: [],
   orderIndex: new Map(),
-  index: 0,
-  mode: new URLSearchParams(window.location.search).get('view') === 'spread' ? 'spread' : 'single',
+  get index() { return position.index; },
+  set index(value) { position.index = value; },
+  get mode() { return position.mode; },
+  set mode(value) { position.mode = value; },
   zoom: 1,
   tify: null,
   tifyPromise: null,
@@ -156,7 +161,8 @@ const state = {
   continuousResizeTimer: null,
   continuousResizeObserver: null,
   continuousObservedWidth: 0,
-  continuousTargetIndex: null,
+  get continuousTargetIndex() { return position.target; },
+  set continuousTargetIndex(value) { position.target = value; },
   continuousReady: false,
   continuousPrimaryIndex: null,
   toolsOpen: false,
@@ -682,6 +688,10 @@ function hydrateContinuousImage(index) {
     entry.failedAt = usingThumbnailFallback ? Date.now() : 0;
     entry.failed = false;
     entry.frame.prepend(image);
+    if (index === state.index) {
+      loadingMetrics.mark('first-visible-page', { scan: index + 1 });
+      if (!usingThumbnailFallback) loadingMetrics.mark('first-sharp-page', { scan: index + 1, requestedWidth: pixelWidth });
+    }
     entry.cancelPreview?.();
     entry.cancelPreview = null;
     previousImage?.removeAttribute('src');
@@ -726,7 +736,7 @@ function showContinuousPreview(entry, page, index) {
   if (page.thumbnail === continuousImageUrl(page, entry.pendingPixelWidth)) return;
   const finishPreview = loadingMetrics.start('preview', { scan: index + 1 });
   entry.cancelPreview = startImagePreview(entry.frame, page.thumbnail, {
-    onReady: () => finishPreview(),
+    onReady: () => { finishPreview(); if (index === state.index) loadingMetrics.mark('first-visible-page', { scan: index + 1 }); },
     alt: `${pageDisplay(page, index)} (preview)`,
     width: page.width,
     height: page.height,
@@ -909,22 +919,19 @@ function scheduleContinuousPageSync() {
   state.continuousScrollFrame = window.requestAnimationFrame(() => {
     state.continuousScrollFrame = null;
     const observedIndex = currentContinuousIndex();
-    if (state.continuousTargetIndex != null && observedIndex !== state.continuousTargetIndex) return;
-    if (observedIndex === state.continuousTargetIndex) state.continuousTargetIndex = null;
+    if (!position.observe(observedIndex)) return;
     commitContinuousIndex(observedIndex);
   });
 }
 
 function cancelContinuousTarget() {
   if (state.continuousTargetIndex == null) return;
-  state.continuousTargetIndex = null;
+  position.interrupt();
   scheduleContinuousPageSync();
 }
 
-let continuousScrollRequest = 0;
-
 function scrollToContinuousPage(index, { behavior } = {}) {
-  const request = ++continuousScrollRequest;
+  const request = position.request(index);
   const entry = state.continuousEntries[index];
   if (!entry || elements.continuousReader.hidden) return;
   const distance = Math.abs(index - currentContinuousIndex());
@@ -941,7 +948,7 @@ function scrollToContinuousPage(index, { behavior } = {}) {
     behavior: scrollBehavior,
   });
   window.setTimeout(() => {
-    if (request === continuousScrollRequest && state.continuousTargetIndex === index) scheduleContinuousPageSync();
+    if (position.isCurrent(request) && state.continuousTargetIndex === index) scheduleContinuousPageSync();
   }, scrollBehavior === 'smooth' ? 800 : 0);
 }
 
@@ -1484,6 +1491,7 @@ function updatePageUi({ centerThumbnail: shouldCenterThumbnail = true, smoothThu
   elements.spread.setAttribute('aria-pressed', String(state.mode === 'spread'));
   elements.pageStatus.textContent = `${pageStatusText(visibleIndices)} · Scan ${state.index + 1} of ${state.pages.length}`;
   if (savedPageOrder !== page.order) {
+    clearedPageOrder = null;
     savedPageOrder = page.order;
     window.clearTimeout(progressTimer);
     progressTimer = window.setTimeout(flushProgress, 300);
@@ -2449,3 +2457,9 @@ initialize();
 
 // Volume links keep the hierarchy open at the newly selected book.
 if (new URLSearchParams(window.location.search).get('contents') === '1') openDrawer();
+
+window.addEventListener('cmg-history-cleared', () => {
+  clearedPageOrder = savedPageOrder;
+  if (progressTimer) window.clearTimeout(progressTimer);
+  progressTimer = null;
+});

@@ -25,3 +25,15 @@ Page entry accepts the source's page labels (including Roman numerals) and `scan
 `viewer-progress.js` owns storage and initial-page precedence; `viewer-reference.js` owns page-entry resolution and citation/reference formatting; `viewer-metrics.js` owns bounded local timing records. The reader controller connects these modules to the existing UI.
 
 Volume and manifest normalization now lives in `viewer-data.js`, including source-page mapping and contents/range resolution. It has no DOM dependency or global reader state; `viewer-values.js` provides shared value parsing. Indexed records apply only to their specified canvas, complete range definitions take precedence over reference-only objects, and circular range references terminate without losing reachable pages. Browser checks cover reading with either metadata source missing, navigation past a failed image, and retry after both sources fail.
+
+## Corpus discovery and local history
+
+The Contents drawer includes an accent-insensitive search across title, author and shelfmark. Results retain bibliographic series headings and ordering; clearing the query returns to the previous tree level. Recently opened volumes are listed in the same drawer, with links to saved source-page orders. Clear reading history removes only this reader's storage key; exiting the current page does not recreate it. New navigation starts recording again. No account or external telemetry is involved.
+
+Shared tokens now cover body, small and heading text, focus colour, touch targets and spacing. Search, history, sharing and toolbar controls follow those tokens. Search text stays at 16px to avoid iOS focus zoom. The existing inset page-input focus ring remains intact.
+
+Page index, layout mode and programmatic scroll target now have one owner in `viewer-position.js`. Scroll observations cannot override an outstanding target; obsolete completion tokens cannot affect a newer request. `viewer.js` remains the composition layer for rendering, with independent modules for data, position, navigation, loading, gestures, keyboard, corpus, sharing, tools, history and metrics. Further extraction is maintenance, not required for this release.
+
+## Physical iPhone acceptance check
+
+Automated WebKit emulation does not validate the actual iOS keyboard. On a physical device: enter a Roman label and `scan 100`; confirm the field and Go remain above the keyboard, dismiss the keyboard, tap arrows rapidly, rotate both ways, and open/close Contents, Tools and Share. Confirm pinch zoom still works on the scan. This check requires device access and is not claimed as completed by CI.

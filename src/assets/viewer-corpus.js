@@ -1,3 +1,5 @@
+import { textValue, listValue } from './viewer-values.js';
+import { createProgressStore } from './viewer-progress.js';
 const COLLECTIONS = ['CMG', 'CMG Supplementum', 'CMG Supplementum Orientale', 'CML', 'Weitere Ausgaben', 'Übersetzungen', 'Diels'];
 const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
 
@@ -20,10 +22,11 @@ export function corpusGroups(catalogue) {
       ordinal: roman ? romanValue(roman) : Number.MAX_SAFE_INTEGER,
       group: collection === 'CMG' && roman ? `CMG ${roman}` : collection,
       shelfmark: number.toLowerCase().startsWith(collection.toLowerCase()) ? number : `${collection} ${number}`.trim(),
-      titles: [],
+      titles: [], authors: [],
     });
-    const title = String(item.label || '').trim();
+    const title = textValue(item.label || item.title || item.work);
     const volume = volumes.get(id);
+    for (const author of listValue(item.authors, item.author, item.creators)) if (!volume.authors.includes(author)) volume.authors.push(author);
     if (title && !volume.titles.includes(title)) volume.titles.push(title);
   }
   const rank = (collection) => COLLECTIONS.includes(collection) ? COLLECTIONS.indexOf(collection) : COLLECTIONS.length;
@@ -38,7 +41,21 @@ export function corpusGroups(catalogue) {
   return [...groups.values()];
 }
 
+export function filterCorpusGroups(groups, query) {
+  const fold = value => String(value).normalize('NFKD').replace(/\p{M}/gu, '').toLocaleLowerCase();
+  const terms = fold(query).trim().split(/\s+/).filter(Boolean);
+  return groups.map(group => ({ ...group, volumes: group.volumes.filter(volume => {
+    const text = fold([volume.shelfmark, ...volume.titles, ...(volume.authors || [])].join(' '));
+    return terms.every(term => /^[ivxlcdm]+$/.test(term) ? text.split(/[^\p{L}\p{N}]+/u).includes(term) : text.includes(term));
+  }) })).filter(group => group.volumes.length);
+}
+
 export function setupCorpusContents({ baseUrl, volumeId }) {
+  const search = document.querySelector('#corpus-search');
+  const progress = createProgressStore();
+  const recentList = document.querySelector('#recent-volumes');
+  const reset = document.querySelector('#clear-reading-history');
+  const historyStatus = document.querySelector('#history-status');
   const up = document.querySelector('#contents-up');
   const book = document.querySelector('#book-contents');
   const corpus = document.querySelector('#corpus-contents');
@@ -86,7 +103,9 @@ export function setupCorpusContents({ baseUrl, volumeId }) {
     const group = selectedGroup || currentGroup();
     heading.textContent = level === 'book' ? bookLabel : level === 'root' ? 'All CMG volumes' : (group?.label || 'Volumes');
     eyebrow.textContent = level === 'book' ? 'Contents' : level === 'root' ? 'Corpus' : 'Series';
-    if (level !== 'book') {
+    const query = search?.value.trim() || '';
+    if (query) { book.hidden = true; corpus.hidden = false; }
+    if (level !== 'book' || query) {
       const list = document.createElement('ol');
       if (!groups) {
         const status = document.createElement('li');
@@ -98,6 +117,17 @@ export function setupCorpusContents({ baseUrl, volumeId }) {
           list.append(row('Retry', '', { action: () => { void load(); heading.focus(); }, marker: '↻' }));
           list.append(row('Open catalogue', '', { href: baseUrl.href }));
         }
+      } else if (query) {
+        const matched = filterCorpusGroups(groups, query);
+        for (const entry of matched) {
+          const heading = document.createElement('li');
+          heading.className = 'contents-search-group'; heading.textContent = entry.label; list.append(heading);
+          for (const volume of entry.volumes) list.append(row(volume.shelfmark, volume.titles.join(' / '), {
+            href: new URL(`viewer/${encodeURIComponent(volume.id)}/?contents=1`, baseUrl).href,
+            current: volume.id === volumeId,
+          }));
+        }
+        if (!matched.length) { const empty = document.createElement('li'); empty.className = 'contents-loading'; empty.textContent = 'No matching volumes.'; list.append(empty); }
       } else if (level === 'root' || !group) {
         // A missing catalogue entry must still let the reader reach the corpus.
         level = 'root';
@@ -136,6 +166,7 @@ export function setupCorpusContents({ baseUrl, volumeId }) {
         const result = corpusGroups(await response.json());
         if (!result.length) throw new Error('No volumes found');
         groups = result;
+        renderRecent();
       } catch {
         failed = true;
       } finally {
@@ -146,12 +177,31 @@ export function setupCorpusContents({ baseUrl, volumeId }) {
     return pending;
   }
 
-  function showBook(options = {}) { level = 'book'; selectedGroup = null; render(options); }
+  function showBook(options = {}) { if (search) search.value = ''; level = 'book'; selectedGroup = null; render(options); }
   up.addEventListener('click', () => {
+    if (search) search.value = '';
     level = level === 'book' ? 'group' : 'root';
     selectedGroup = null;
     render({ focus: true });
     void load();
+  });
+  function renderRecent() {
+    if (!recentList || !groups) return;
+    recentList.replaceChildren();
+    const volumes = groups.flatMap(group => group.volumes);
+    for (const entry of progress.recent().slice(0, 10)) {
+      const volume = volumes.find(volume => volume.id === entry.id);
+      if (volume) recentList.append(row(volume.shelfmark, volume.titles.join(' / '), { href: new URL(`viewer/${encodeURIComponent(volume.id)}/?pn=${entry.order}`, baseUrl).href }));
+    }
+    if (!recentList.children.length) { const empty = document.createElement('li'); empty.textContent = 'No saved reading history.'; recentList.append(empty); }
+  }
+  search?.addEventListener('input', () => { render(); void load(); });
+  document.querySelector('#reading-history')?.addEventListener('toggle', () => { renderRecent(); void load(); });
+  reset?.addEventListener('click', () => {
+    const cleared = progress.clear();
+    historyStatus.textContent = cleared ? 'Reading history cleared on this browser.' : 'Browser storage is unavailable.';
+    if (cleared) window.dispatchEvent(new Event('cmg-history-cleared'));
+    renderRecent();
   });
   return {
     showBook,

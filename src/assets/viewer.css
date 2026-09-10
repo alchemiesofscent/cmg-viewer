@@ -163,7 +163,7 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   border-radius: 0.2rem;
   color: white;
   background: transparent;
-  font-size: 0.875rem;
+  font-size: var(--reader-text-small);
   font-weight: 600;
   text-decoration: none;
 }
@@ -261,7 +261,7 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   width: 2.45rem;
   flex: 0 0 2.45rem;
   padding: 0;
-  font-size: 1rem;
+  font-size: var(--reader-text-body);
 }
 
 .page-controls {
@@ -363,7 +363,7 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
 #tify {
   --tify-color-primary: #8c3d2a;
   --tify-color-primary-dark: #6f2e20;
-  --tify-font-size: 0.875rem;
+  --tify-font-size: var(--reader-text-small);
   --tify-line-height: 1.45;
   background: #252e32;
   font-family: var(--sans);
@@ -1176,7 +1176,7 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   .tool-button.square {
     width: var(--reader-touch-size);
     flex-basis: var(--reader-touch-size);
-    font-size: 1.1rem;
+    font-size: var(--reader-text-heading);
   }
 
   .reader-secondary-tools .tool-button.fullscreen-button {
@@ -1188,7 +1188,7 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
     width: 4.2rem;
     min-height: var(--reader-touch-size);
     border-color: #afa69a;
-    font-size: 1rem;
+    font-size: var(--reader-text-body);
     font-weight: 680;
   }
 
@@ -1384,7 +1384,7 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
   overflow-wrap: anywhere;
 }
 .contents-entry a:hover { color: var(--accent-dark); background: #f4efe6; }
-.contents-subtitle { display: block; margin-top: 0.25rem; color: var(--ink-soft); font-size: 0.875rem; font-weight: 400; }
+.contents-subtitle { display: block; margin-top: 0.25rem; color: var(--ink-soft); font-size: var(--reader-text-small); font-weight: 400; }
 
 /* Shared Tools panel; phones anchor it above their bottom toolbar. */
 .reader-secondary-tools {
@@ -1477,14 +1477,14 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
 }
 .share-panel[hidden] { display: none; }
 .share-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-.share-panel h2 { margin: 0; font-size: 1.1rem; }
-.share-panel-heading button { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: inherit; font-size: 1.5rem; }
-.share-panel label { display: block; margin-top: 0.5rem; font-size: 0.85rem; }
-.share-panel input, .share-panel textarea { display: block; width: 100%; min-width: 0; margin: 0.4rem 0 0.75rem; padding: 0.6rem; font-size: 1rem; }
+.share-panel h2 { margin: 0; font-size: var(--reader-text-heading); }
+.share-panel-heading button { min-width: var(--reader-touch-size); min-height: var(--reader-touch-size); border: 0; background: transparent; color: inherit; font-size: 1.5rem; }
+.share-panel label { display: block; margin-top: 0.5rem; font-size: var(--reader-text-small); }
+.share-panel input, .share-panel textarea { display: block; width: 100%; min-width: 0; margin: 0.4rem 0 0.75rem; padding: 0.6rem; font-size: var(--reader-text-body); }
 .share-panel textarea { resize: vertical; font-family: var(--sans); line-height: 1.4; }
-.reader-page-help { grid-column: 1 / -1; margin: 0; color: var(--ink-soft); font-size: 0.85rem; line-height: 1.4; }
+.reader-page-help { grid-column: 1 / -1; margin: 0; color: var(--ink-soft); font-size: var(--reader-text-small); line-height: 1.4; }
 .share-panel .tool-button { min-height: 44px; }
-.share-panel p { margin: 0.75rem 0 0; font-size: 0.85rem; }
+.share-panel p { margin: 0.75rem 0 0; font-size: var(--reader-text-small); }
 .share-panel p:empty { display: none; }
 .share-panel button, .header-action { appearance: none; touch-action: manipulation; }
 .header-action[aria-expanded="true"] { background: rgb(255 255 255 / 18%); }
@@ -1499,7 +1499,7 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
 .page-controls > .tool-button:first-child { border-right: 1px solid var(--reader-control-border); }
 .page-controls > .tool-button:last-child { border-left: 1px solid var(--reader-control-border); }
 .page-controls .page-jump { gap: 0; min-width: 0; }
-.page-controls .page-jump input { width: 4rem; min-height: var(--reader-touch-size); border: 0; border-radius: 0; font-size: 1rem; padding: 0.35rem; background: transparent; }
+.page-controls .page-jump input { width: 4rem; min-height: var(--reader-touch-size); border: 0; border-radius: 0; font-size: var(--reader-text-body); padding: 0.35rem; background: transparent; }
 /* Keep focus inside each segment so its neighbour cannot cover the ring. */
 .page-controls .page-jump input:focus,
 .page-controls .page-go:focus-visible {
@@ -1526,3 +1526,16 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
 /* Interface icons are vector shapes rather than font-dependent symbols. */
 .reader-icon { display: block; width: var(--reader-icon-size); height: var(--reader-icon-size); flex: 0 0 auto; }
 .reader-secondary-tools .tool-button { line-height: 1.35; }
+
+/* Corpus discovery uses the same typography and controls as volume contents. */
+.contents-search, .reading-history { padding: .65rem 1rem; border-bottom: 1px solid var(--reader-control-border); }
+.contents-search label { display: block; font-size: .875rem; font-weight: 650; margin-bottom: .35rem; }
+.contents-search input { width: 100%; min-width: 0; min-height: var(--reader-touch-size); font: inherit; font-size: var(--reader-text-body); padding: .5rem .65rem; border: 1px solid var(--reader-control-border); border-radius: var(--reader-control-radius); background: var(--reader-control-surface); }
+.reading-history { flex: 0 0 auto; max-height: 35vh; overflow: auto; }
+.reading-history summary { min-height: var(--reader-touch-size); align-content: center; cursor: pointer; }
+.reading-history ol { list-style: none; padding: 0; margin: 0; }
+.reading-history .contents-entry a { display: flex; justify-content: space-between; padding: .65rem 0; color: inherit; text-decoration: none; }
+.reading-history button { min-height: var(--reader-touch-size); font: inherit; padding: .5rem .75rem; border: 1px solid var(--reader-control-border); border-radius: var(--reader-control-radius); background: var(--reader-control-surface); color: inherit; }
+.contents-search-group { font-weight: 700; padding: .75rem 1rem; background: var(--reader-panel-surface); }
+#history-status { font-size: .875rem; margin: .35rem 0; }
+.contents-search input:focus-visible, .reading-history button:focus-visible, .reading-history summary:focus-visible { outline: 2px solid var(--reader-focus-color); outline-offset: -3px; }

@@ -55,6 +55,7 @@ const elements = {
   activeFilterCount: document.querySelector('#active-filter-count'),
   activeFilters: document.querySelector('#active-filters'),
   sort: document.querySelector('#sort-results'),
+  direction: document.querySelector('#sort-direction'),
   count: document.querySelector('#results-count'),
   loading: document.querySelector('#loading-results'),
   results: document.querySelector('#results'),
@@ -75,6 +76,7 @@ const state = {
   items: [],
   query: '',
   sort: 'series',
+  direction: 'asc',
   filters: Object.fromEntries(filterDefinitions.map(({ key }) => [key, new Set()])),
   expanded: new Set(),
   loadController: null,
@@ -235,6 +237,8 @@ function readUrlState() {
   state.sort = ['relevance', 'author', 'year', 'series'].includes(params.get('sort')) ? params.get('sort') : 'series';
   elements.search.value = state.query;
   elements.sort.value = state.sort;
+  state.direction = ['asc', 'desc'].includes(params.get('order')) ? params.get('order') : (state.sort === 'relevance' ? 'desc' : 'asc');
+  elements.direction.value = state.direction;
 
   for (const definition of filterDefinitions) {
     state.filters[definition.key] = new Set(params.getAll(definition.queryKey).filter(Boolean));
@@ -268,6 +272,7 @@ function writeUrlState() {
   const params = new URLSearchParams();
   if (state.query) params.set('q', state.query);
   if (state.sort !== 'series') params.set('sort', state.sort);
+  params.set('order', state.direction);
   for (const definition of filterDefinitions) {
     [...state.filters[definition.key]].sort().forEach((value) => params.append(definition.queryKey, value));
   }
@@ -514,6 +519,8 @@ function browseBy(key, value) {
   clearCatalogueState();
   if (!clearSelection) state.filters[key].add(value);
   state.sort = 'series';
+  state.direction = 'asc';
+  elements.direction.value = state.direction;
   elements.sort.value = state.sort;
   closeAuthorsMenu({ restoreFocus: false });
   refresh({ filters: true });
@@ -557,7 +564,7 @@ function filteredItems() {
   const terms = fold(state.query).split(/\s+/).filter(Boolean);
   const matched = state.items.filter((item) => terms.every((term) => item.searchText.includes(term)) && matchesFilters(item));
 
-  return matched.sort((left, right) => {
+  const sorted = matched.sort((left, right) => {
     if (state.sort === 'author') {
       return (left.authors[0] || left.title).localeCompare(right.authors[0] || right.title, undefined, { sensitivity: 'base' }) || left.title.localeCompare(right.title);
     }
@@ -567,8 +574,9 @@ function filteredItems() {
     if (state.sort === 'series') {
       return compareSeriesItems(left, right);
     }
-    return relevanceScore(right, terms) - relevanceScore(left, terms) || left.index - right.index;
+    return relevanceScore(left, terms) - relevanceScore(right, terms) || left.index - right.index;
   });
+  return state.direction === 'desc' ? sorted.reverse() : sorted;
 }
 
 function viewerUrl(item) {
@@ -758,6 +766,8 @@ function resetAll() {
   state.query = '';
   elements.search.value = '';
   state.sort = 'series';
+  state.direction = 'asc';
+  elements.direction.value = state.direction;
   elements.sort.value = state.sort;
   filterDefinitions.forEach(({ key }) => state.filters[key].clear());
   refresh({ filters: true });
@@ -809,8 +819,11 @@ elements.clearSearch.addEventListener('click', () => {
 });
 elements.sort.addEventListener('change', () => {
   state.sort = elements.sort.value;
+  state.direction = state.sort === 'relevance' ? 'desc' : 'asc';
+  elements.direction.value = state.direction;
   refresh();
 });
+elements.direction.addEventListener('change', () => { state.direction = elements.direction.value; refresh(); });
 elements.filterGroups.addEventListener('change', (event) => {
   const input = event.target.closest('input[data-filter-key]');
   if (!input) return;

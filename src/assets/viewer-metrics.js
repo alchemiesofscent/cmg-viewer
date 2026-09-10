@@ -5,6 +5,10 @@ export function createLoadingMetrics(clock = () => performance.now()) {
   let entries = [];
   return {
     reset() { generation += 1; started = clock(); entries = []; },
+    mark(name, details = {}) {
+      if (entries.some(entry => entry.name === name)) return;
+      entries.push({ name, ...details, status: 'ok', startMs: 0, durationMs: Math.round(clock() - started) });
+    },
     start(name, details = {}) {
       const token = generation;
       const begin = clock();
