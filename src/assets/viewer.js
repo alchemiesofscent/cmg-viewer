@@ -941,12 +941,13 @@ function scrollToContinuousPage(index, { behavior } = {}) {
     behavior: scrollBehavior,
   });
   window.setTimeout(() => {
-    if (request === continuousScrollRequest && state.continuousTargetIndex === index) cancelContinuousTarget();
+    if (request === continuousScrollRequest && state.continuousTargetIndex === index) scheduleContinuousPageSync();
   }, scrollBehavior === 'smooth' ? 800 : 0);
 }
 
 function activateContinuousReader(index, { behavior } = {}) {
   if (elements.continuousReader.hidden) return;
+  state.continuousTargetIndex = index;
   window.requestAnimationFrame(() => {
     if (index !== state.index) return;
     scrollToContinuousPage(index, { behavior });
@@ -2405,7 +2406,7 @@ elements.continuousReader.addEventListener('pointercancel', handleContinuousPoin
 elements.continuousReader.addEventListener('lostpointercapture', handleContinuousLostPointerCapture);
 elements.continuousReader.addEventListener('touchstart', preventNativeContinuousTouchGesture, { passive: false });
 elements.continuousReader.addEventListener('touchmove', preventNativeContinuousTouchGesture, { passive: false });
-elements.continuousScroll.addEventListener('scrollend', cancelContinuousTarget, { passive: true });
+elements.continuousScroll.addEventListener('scrollend', scheduleContinuousPageSync, { passive: true });
 
 window.addEventListener('pagehide', () => {
   flushProgress();
