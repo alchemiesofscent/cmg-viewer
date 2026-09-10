@@ -184,7 +184,10 @@ test('scan entry and citation expose distinct page coordinates', async ({ page }
   await page.locator('#page-order').fill('scan 5');
   await page.locator('#page-order').press('Enter');
   await expect(page).toHaveURL(/pn=5/);
+  // A delayed viewer history update must not change the page being shared.
+  await page.evaluate(() => history.replaceState(null, '', '?pn=1&view=single'));
   await page.locator('#share-view').click();
+  await expect(page.locator('#share-link')).toHaveValue(/pn=5/);
   await expect(page.locator('#share-reference')).toHaveText('Page label 3 · Scan 5 of 8');
   await expect(page.locator('#share-citation')).toHaveValue(/p\. 3\..*pn=5/);
   await page.locator('#copy-citation').click();

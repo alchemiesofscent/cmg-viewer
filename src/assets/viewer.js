@@ -570,12 +570,18 @@ function setThumbnailStripOpen(open, { smooth = false } = {}) {
   if (state.thumbnailsOpen) centerThumbnail(state.index, { smooth });
 }
 
-function updateAddress() {
+function currentViewUrl() {
   const page = state.pages[state.index];
-  if (!page) return;
+  if (!page) return window.location.href;
   const url = new URL(window.location.href);
   url.searchParams.set('pn', String(page.order));
   url.searchParams.set('view', state.mode);
+  return url.href;
+}
+
+function updateAddress() {
+  if (!state.pages[state.index]) return;
+  const url = new URL(currentViewUrl());
   try {
     history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   } catch (error) {
@@ -915,7 +921,10 @@ function cancelContinuousTarget() {
   scheduleContinuousPageSync();
 }
 
+let continuousScrollRequest = 0;
+
 function scrollToContinuousPage(index, { behavior } = {}) {
+  const request = ++continuousScrollRequest;
   const entry = state.continuousEntries[index];
   if (!entry || elements.continuousReader.hidden) return;
   const distance = Math.abs(index - currentContinuousIndex());
@@ -932,13 +941,14 @@ function scrollToContinuousPage(index, { behavior } = {}) {
     behavior: scrollBehavior,
   });
   window.setTimeout(() => {
-    if (state.continuousTargetIndex === index) cancelContinuousTarget();
+    if (request === continuousScrollRequest && state.continuousTargetIndex === index) cancelContinuousTarget();
   }, scrollBehavior === 'smooth' ? 800 : 0);
 }
 
 function activateContinuousReader(index, { behavior } = {}) {
   if (elements.continuousReader.hidden) return;
   window.requestAnimationFrame(() => {
+    if (index !== state.index) return;
     scrollToContinuousPage(index, { behavior });
     if (!state.continuousReady) {
       observeContinuousImages();
@@ -1490,7 +1500,7 @@ function syncTifyPages() {
   syncTifyPageSelection(state.tify, spreadPageNumbers());
 }
 
-function setCurrentIndex(index, { updateViewer = true, speak = true, scrollBehavior } = {}) {
+function setCurrentIndex(index, { updateViewer = true, speak = true, scrollBehavior = 'auto' } = {}) {
   const nextIndex = Math.max(0, Math.min(state.pages.length - 1, index));
   state.index = nextIndex;
   updateContinuousSelection(nextIndex);
@@ -2263,7 +2273,7 @@ setupSharePanel({
   copy: document.querySelector('#copy-view-link'),
   close: document.querySelector('#share-close'),
   status: document.querySelector('#share-status'),
-  getUrl: () => window.location.href,
+  getUrl: currentViewUrl,
   reference: document.querySelector('#share-reference'),
   citation: document.querySelector('#share-citation'),
   copyCitation: document.querySelector('#copy-citation'),
@@ -2273,7 +2283,7 @@ setupSharePanel({
   },
   getCitation: () => {
     const page = state.pages[state.index];
-    return page ? pageCitation({ title: elements.title.textContent, label: sourcePageLabel(page), order: page.order, index: state.index, url: window.location.href }) : '';
+    return page ? pageCitation({ title: elements.title.textContent, label: sourcePageLabel(page), order: page.order, index: state.index, url: currentViewUrl() }) : '';
   },
   clipboard: navigator.clipboard,
 });
