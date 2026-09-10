@@ -94,3 +94,7 @@ CMG Viewer is released under the [GNU Affero General Public License v3.0](LICENS
 The generated site also includes TIFY 0.35.0 under the same license family; see
 [the third-party notices](THIRD_PARTY_NOTICES.md). Catalogue records and page
 images remain linked to their BBAW sources and are not relicensed here.
+
+## Regression checks and releases
+
+See [release and snapshot documentation](docs/releasing.md) for browser checks, independent corpus refreshes, reproducible UI deployment, and rollback. Reader interface tokens are documented in [interface styles](docs/interface.md).

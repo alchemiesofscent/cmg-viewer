@@ -20,3 +20,7 @@ Thumbs.db
 # contains a large substitute-image payload that must not enter Git history.
 bbaw-cmg-tify-mobile-prototype/
 bbaw-cmg-tify-mobile-prototype.zip
+
+# Browser regression output
+test-results/
+playwright-report/

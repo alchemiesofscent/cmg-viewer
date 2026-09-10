@@ -1,0 +1,76 @@
+name: Refresh corpus
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 1 * *"
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refresh-corpus.yml'
+      - 'scripts/sync*.py'
+      - 'scripts/catalogue.py'
+      - 'scripts/metadata.py'
+      - 'scripts/fallback.py'
+      - 'config/catalogue-sources.json'
+      - 'config/mets-overrides.json'
+      - 'scripts/corpus_snapshot.py'
+permissions:
+  contents: write
+concurrency:
+  group: corpus-refresh
+  cancel-in-progress: false
+jobs:
+  refresh:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.19.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install pinned dependencies
+        run: pnpm install --frozen-lockfile
+
+      - run: pnpm test
+      - run: pnpm sync
+      - run: pnpm build
+      - name: Validate and package the complete corpus
+        env:
+          SNAPSHOT_TAG: corpus-${{ github.run_id }}-${{ github.run_attempt }}
+        run: python scripts/corpus_snapshot.py pack --tag "$SNAPSHOT_TAG"
+      - name: Publish a new versioned snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SNAPSHOT_TAG: corpus-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          gh release create "$SNAPSHOT_TAG" tmp/corpus-snapshot/corpus.tar.gz tmp/corpus-snapshot/snapshot.json --target "$GITHUB_SHA" --title "Corpus snapshot $SNAPSHOT_TAG" --notes "Full corpus metadata validated before publication. Page images remain at BBAW." --latest=false
+      - name: Pin the successful snapshot for future UI builds
+        run: |
+          python scripts/sync_marker.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add config/corpus-snapshot.json data/last-successful-sync.json
+          git commit -m "chore: pin validated corpus snapshot [skip ci]"
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then exit 0; fi
+          done
+          exit 1

@@ -1,46 +1,25 @@
 # GitHub Pages deployment
 
-The production site is built and deployed by
-`.github/workflows/deploy-pages.yml`. In the GitHub repository settings, choose
-**Settings → Pages → Build and deployment → GitHub Actions** as the Pages
-source. No publishing branch or committed `dist/` directory is required.
+The production site is built and deployed by `.github/workflows/deploy-pages.yml`. In repository settings, choose **Settings → Pages → Build and deployment → GitHub Actions** as the Pages source. No publishing branch or committed `dist/` directory is required.
 
-The workflow runs in three situations:
+UI deployments run on pushes to `main`, manual runs on `main`, and successful completion of the separate **Refresh corpus** workflow. Other branches cannot publish the public site.
 
-- after a push to `main`;
-- when started manually with **Run workflow**; and
-- at 03:17 UTC on the first day of every month.
+Each UI release installs pinned dependencies, runs Python/JavaScript tests, restores a checksum-pinned corpus snapshot, builds the static site, validates the full artifact, and runs browser checks. Only then is the Pages artifact uploaded and deployed. UI deployments no longer synchronize BBAW metadata.
 
-Manual runs may build any selected ref for diagnosis, but the deploy job is
-guarded to `main`; selecting another branch cannot replace the public site.
+The independent refresh workflow runs at 03:17 UTC on the first day of each month, manually on `main`, or after ingestion code/configuration changes. It publishes a full validated snapshot and commits its pin and `data/last-successful-sync.json` marker. A failed refresh leaves the previous pin and public site intact. The first release after introducing snapshots waits for this independent bootstrap refresh to finish.
 
-Each run installs the pinned pnpm dependencies, runs the Python test suite,
-synchronizes the full allowlisted BBAW catalogue, builds the static site, and
-validates `dist/`. The Pages artifact is uploaded only after every gate passes.
-Consequently, an upstream outage, unexpected catalogue-count change, invalid
-manifest, or build failure cannot replace the last successful deployment.
+Only the refresh workflow has `contents: write` for publishing snapshots and their pins. The deployment workflow uses the `github-pages` environment and OIDC with `pages: write` and `id-token: write`. Generated corpus data, scan images and caches are never committed.
 
-After a successful scheduled synchronization, the workflow commits the compact
-`data/last-successful-sync.json` marker with a `[skip ci]` commit. Besides making
-the reviewed counts visible in Git, this keeps the public repository active so
-GitHub does not automatically disable its scheduled workflow after 60 days.
-Push and manual runs never write this marker.
+For a local build using the committed snapshot:
 
-The deploy job uses GitHub's `github-pages` environment and OIDC deployment
-token. The workflow's `contents: write` permission is used only by the guarded
-scheduled marker step; generated catalogue data and caches are never committed.
-Pages publication uses the separately declared `pages: write` and
-`id-token: write` permissions.
-
-The equivalent release check can be run locally from the repository root:
-
-```powershell
+```sh
 pnpm install --frozen-lockfile
 pnpm test
-pnpm sync
+python scripts/corpus_snapshot.py restore
 pnpm build
 pnpm validate
 ```
 
-The deployed project URL is
-<https://alchemiesofscent.github.io/cmg-viewer/>.
+See [release checks and rollback](releasing.md) for browser setup, hardware verification, restoring old snapshots and failed refresh recovery.
+
+The deployed project URL is [CMG Viewer](https://alchemiesofscent.github.io/cmg-viewer/).

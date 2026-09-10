@@ -2238,7 +2238,7 @@ function setFocusFullscreen(active, { notify = true } = {}) {
   refreshFullscreenLayout();
   if (!notify) return;
   if (active) {
-    const exitLocation = mobileMedia.matches ? 'Exit from More.' : 'Use the toolbar to exit.';
+    const exitLocation = mobileMedia.matches ? 'Exit from Tools.' : 'Use the toolbar to exit.';
     showFullscreenNotice(`Focus view active. Browser controls remain visible. ${exitLocation}`);
   } else {
     hideFullscreenNotice();
