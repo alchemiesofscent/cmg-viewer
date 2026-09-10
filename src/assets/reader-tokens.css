@@ -1,5 +1,11 @@
 /* Reader interface tokens. Keep page scans and TIFY image rendering separate. */
 :root {
+  --reader-text-small: 0.875rem;
+  --reader-text-body: 1rem;
+  --reader-text-heading: 1.1rem;
+  --reader-focus-color: #087bad;
+  --reader-space-small: 0.35rem;
+  --reader-space-medium: 0.75rem;
   --reader-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --reader-stage-color: #20282c;
   --reader-control-border: #c9c1b5;

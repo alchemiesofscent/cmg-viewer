@@ -880,3 +880,6 @@ body.authors-menu-open {
 }
 
 .result-resume { display: inline-flex; align-items: center; min-height: 2.75rem; color: var(--teal); font-weight: 600; }
+
+.results-heading { flex-wrap: wrap; gap: .75rem; }
+.sort-control select { min-height: 2.75rem; font-size: 1rem; max-width: 100%; }

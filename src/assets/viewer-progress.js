@@ -11,12 +11,13 @@ export function createProgressStore(getStorage = () => window.localStorage) {
     } catch { return {}; }
   }
   return {
+    recent() { return Object.entries(read()).sort((a, b) => b[1].updatedAt - a[1].updatedAt).map(([id, item]) => ({ id, ...item })); },
+    clear() { try { getStorage().removeItem(PROGRESS_KEY); return true; } catch { return false; } },
     get(id) { return read()[id]?.order ?? null; },
     save(id, order) {
       if (!/^[a-zA-Z0-9_-]+$/.test(id) || !Number.isSafeInteger(order) || order < 0) return;
       try {
         const entries = read();
-        if (entries[id]?.order === order) return;
         const recent = [[id, { order, updatedAt: Date.now() }], ...Object.entries(entries).filter(([key]) => key !== id)]
           .sort((a, b) => b[1].updatedAt - a[1].updatedAt).slice(0, 50);
         getStorage().setItem(PROGRESS_KEY, JSON.stringify(Object.fromEntries(recent)));

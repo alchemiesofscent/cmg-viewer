@@ -1,3 +1,4 @@
+import { createReaderPosition } from '../../src/assets/viewer-position.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createProgressStore, initialPageIndex, PROGRESS_KEY } from '../../src/assets/viewer-progress.js';
@@ -58,4 +59,19 @@ test('timings isolate resets, failures and returned snapshots', async () => {
   assert.equal(metrics.snapshot()[1].status, 'error');
   for (let i = 0; i < 150; i++) metrics.start('bounded')();
   assert.equal(metrics.snapshot().length, 100);
+});
+
+ test('reading history can be listed and cleared without touching unrelated storage', () => {
+   let value = null; const storage = { getItem: () => value, setItem: (_, v) => { value = v; }, removeItem: key => { assert.equal(key, PROGRESS_KEY); value = null; } };
+   const store = createProgressStore(() => storage); store.save('a', 4); store.save('b', 7);
+   assert.equal(store.recent().length, 2); assert.equal(store.clear(), true); assert.deepEqual(store.recent(), []);
+ });
+
+test('stale scroll completions cannot cancel a later jump to the same page', () => {
+ const position = createReaderPosition();
+ const old = position.request(6); position.request(2); const latest = position.request(6);
+ assert.equal(position.isCurrent(old), false); assert.equal(position.isCurrent(latest), true);
+ assert.equal(position.observe(0), false); assert.equal(position.target, 6);
+ assert.equal(position.observe(6), true); assert.equal(position.target, null);
+ position.request(4); position.interrupt(); assert.equal(position.observe(1), true);
 });

@@ -246,3 +246,56 @@ test('Retry recovers after both metadata sources fail', async ({ page }) => {
   await expect(page.locator('#continuous-reader')).toBeVisible();
   await expect(page.locator('#continuous-pages [data-page-index="0"] img').first()).toBeVisible();
 });
+
+test('corpus search keeps series hierarchy and recent history can be cleared', async ({ page }) => {
+  await page.locator('#page-order').fill('scan 5');
+  await page.locator('#page-order').press('Enter');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('cmg-reader-progress-v1') || '{}').fixture_a?.order)).toBe(5);
+  await page.locator('#contents-toggle').click();
+  await page.locator('#corpus-search').fill('CMG V');
+  await expect(page.locator('#corpus-contents')).toContainText('CMG V');
+  await expect(page.locator('#corpus-contents a')).toHaveCount(1);
+  await page.locator('#corpus-search').fill('no-such-volume');
+  await expect(page.locator('#corpus-contents')).toContainText('No matching volumes.');
+  await page.locator('#corpus-search').fill('');
+  await expect(page.locator('#book-contents')).toBeVisible();
+  await page.locator('#reading-history summary').click();
+  await expect(page.locator('#recent-volumes a')).toHaveAttribute('href', /pn=5/);
+  await page.locator('#clear-reading-history').click();
+  await expect(page.locator('#history-status')).toHaveText('Reading history cleared on this browser.');
+  await page.locator('#contents-close').click();
+  await page.goto('viewer/fixture_b/');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('cmg-reader-progress-v1') || '{}').fixture_a ?? null)).toBe(null);
+});
+
+test('delayed programmatic scrolling ignores old scroll-end events', async ({ page }) => {
+  await page.evaluate(() => {
+    const scroller = document.querySelector('#continuous-scroll');
+    const original = scroller.scrollTo.bind(scroller);
+    scroller.scrollTo = options => setTimeout(() => original(options), 120);
+  });
+  await page.locator('#page-order').fill('scan 7');
+  await page.locator('#page-order').press('Enter');
+  await page.evaluate(() => {
+    const scroller = document.querySelector('#continuous-scroll');
+    scroller.dispatchEvent(new Event('scroll'));
+    scroller.dispatchEvent(new Event('scrollend'));
+  });
+  await expect(page.locator('.continuous-page[data-current="true"]')).toHaveAttribute('data-page-index', '6');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('cmg-reader-progress-v1') || '{}').fixture_a?.order)).toBe(7);
+  await expect(page).toHaveURL(/pn=7/);
+});
+
+ test('catalogue sort direction reverses results and survives reload', async ({ page }) => {
+   await page.goto('./');
+   await expect(page.locator('#loading-results')).toBeHidden();
+   const before = await page.locator('.result-card').evaluateAll(cards => cards.map(card => card.dataset.itemId));
+   expect(before.length).toBeGreaterThan(1);
+   await page.locator('#sort-direction').selectOption('desc');
+   await expect(page).toHaveURL(/order=desc/);
+   await expect.poll(() => page.locator('.result-card').evaluateAll(cards => cards.map(card => card.dataset.itemId))).toEqual([...before].reverse());
+   await page.reload();
+   await expect(page.locator('#sort-direction')).toHaveValue('desc');
+   await expect(page.locator('#loading-results')).toBeHidden();
+   await expect.poll(() => page.locator('.result-card').evaluateAll(cards => cards.map(card => card.dataset.itemId))).toEqual([...before].reverse());
+ });
