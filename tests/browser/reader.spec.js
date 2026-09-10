@@ -255,6 +255,12 @@ test('corpus search keeps series hierarchy and recent history can be cleared', a
   await page.locator('#corpus-search').fill('CMG V');
   await expect(page.locator('#corpus-contents')).toContainText('CMG V');
   await expect(page.locator('#corpus-contents a')).toHaveCount(1);
+  const boxes = await page.evaluate(() => ['.drawer-header', '.contents-search', '.reading-history', '#corpus-contents'].map(selector => {
+    const rect = document.querySelector(selector).getBoundingClientRect(); return { top: rect.top, bottom: rect.bottom, height: rect.height };
+  }));
+  for (let i = 1; i < boxes.length; i++) expect(boxes[i].top).toBeGreaterThanOrEqual(boxes[i - 1].bottom - 1);
+  expect(boxes[3].height).toBeGreaterThan(100);
+
   await page.locator('#corpus-search').fill('no-such-volume');
   await expect(page.locator('#corpus-contents')).toContainText('No matching volumes.');
   await page.locator('#corpus-search').fill('');
