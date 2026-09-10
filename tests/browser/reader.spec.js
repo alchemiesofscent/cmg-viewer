@@ -111,8 +111,9 @@ test('reader and open menus fit narrow and wide screens', async ({ page }) => {
 
 test('focus view remains usable when native fullscreen is unavailable', async ({ page }) => {
   await page.evaluate(() => {
-    Object.defineProperty(document.querySelector('.reader-app'), 'requestFullscreen', { value: undefined });
-    Object.defineProperty(document.querySelector('.reader-app'), 'webkitRequestFullscreen', { value: undefined });
+    for (const name of ['requestFullscreen', 'webkitRequestFullscreen', 'webkitRequestFullScreen', 'mozRequestFullScreen', 'msRequestFullscreen']) {
+      Object.defineProperty(document.querySelector('.reader-app'), name, { value: undefined });
+    }
   });
   await page.locator('#tools-toggle').click();
   await page.locator('#fullscreen').click();
