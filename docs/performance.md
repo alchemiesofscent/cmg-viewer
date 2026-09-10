@@ -46,3 +46,15 @@ The next user-side comparison should cover a fresh opening, refresh, adjacent
 page turns, a distant jump, return navigation and zoom in the same volume and
 connection. Record time to preview separately from time to a readable image;
 an early thumbnail is not evidence that the final image downloaded faster.
+
+## Local loading diagnostics
+
+The reader now records completion timings in memory, without telemetry or persistent logging. Open browser developer tools and run:
+
+```js
+console.table(window.cmgLoadingTimings())
+```
+
+Each completed record has `name`, `status`, `startMs` relative to reader initialization and `durationMs`. The last 100 records are retained; reinitializing clears them. Records include volume/manifest JSON fetch and parsing, preview load, continuous reading-image load plus decode, and TIFY assets/initialization. Reading-image records also identify scan position, requested width and whether the request was primary. A thumbnail substituted after an image error is marked `thumbnail-fallback`; it is not counted as a full reading-image success. Cancelled/replaced image requests that never display do not produce success records.
+
+These are elapsed client-side durations, including network, server, decoding and scheduling costs. They do not separate BBAW processing from connection latency, and TIFY readiness is not proof that all spread image tiles have loaded. No scan URLs, catalogue metadata or timing records are sent to an analytics service. Compare fresh loads and repeat loads under the same connection and device before drawing performance conclusions.

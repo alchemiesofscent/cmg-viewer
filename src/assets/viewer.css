@@ -1480,7 +1480,9 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
 .share-panel h2 { margin: 0; font-size: 1.1rem; }
 .share-panel-heading button { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: inherit; font-size: 1.5rem; }
 .share-panel label { display: block; margin-top: 0.5rem; font-size: 0.85rem; }
-.share-panel input { display: block; width: 100%; min-width: 0; margin: 0.4rem 0 0.75rem; padding: 0.6rem; font-size: 1rem; }
+.share-panel input, .share-panel textarea { display: block; width: 100%; min-width: 0; margin: 0.4rem 0 0.75rem; padding: 0.6rem; font-size: 1rem; }
+.share-panel textarea { resize: vertical; font-family: var(--sans); line-height: 1.4; }
+.reader-page-help { grid-column: 1 / -1; margin: 0; color: var(--ink-soft); font-size: 0.85rem; line-height: 1.4; }
 .share-panel .tool-button { min-height: 44px; }
 .share-panel p { margin: 0.75rem 0 0; font-size: 0.85rem; }
 .share-panel p:empty { display: none; }

@@ -44,9 +44,13 @@
           <h2 id="share-heading">Share this page</h2>
           <button id="share-close" type="button" aria-label="Close sharing">×</button>
         </div>
+        <p id="share-reference"></p>
         <label for="share-link">Link to this view</label>
         <input id="share-link" type="text" readonly spellcheck="false">
         <button class="tool-button" id="copy-view-link" type="button">Copy link</button>
+        <label for="share-citation">Page citation</label>
+        <textarea id="share-citation" rows="3" readonly spellcheck="false"></textarea>
+        <button class="tool-button" id="copy-citation" type="button">Copy citation</button>
         <p id="share-status" role="status" aria-live="polite"></p>
       </section>
     </header>
@@ -57,6 +61,7 @@
       </button>
 
       <div class="reader-secondary-tools" id="reader-secondary-tools" role="region" aria-label="Reader tools" hidden inert>
+        <p class="reader-page-help" id="page-entry-help">Enter a page label, or “scan 25” to jump by image position. Reading positions are saved in this browser.</p>
         <div class="reader-actions">
           <button class="tool-button thumbnails-toggle" id="thumbnails-toggle" type="button" aria-expanded="false" aria-controls="thumbnail-strip" aria-label="Show page thumbnails" disabled>
             <svg class="reader-icon" aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Thumbnails</span>
@@ -89,7 +94,7 @@
         <button class="tool-button square" id="previous-page" type="button" aria-label="Previous page" aria-keyshortcuts="ArrowLeft" title="Previous page (Left arrow)">←</button>
         <form class="page-jump" id="page-jump-form">
           <label for="page-order">Go to page</label>
-          <input id="page-order" name="page" type="text" autocorrect="off" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" maxlength="16" aria-label="Go to printed page number or label" aria-describedby="page-status">
+          <input id="page-order" name="page" type="text" autocorrect="off" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" maxlength="32" aria-label="Go to page label or scan position" aria-describedby="page-status page-entry-help">
           <button class="page-go" type="submit" aria-label="Go to entered page">Go</button>
         </form>
         <span class="page-status" id="page-status">—</span>
