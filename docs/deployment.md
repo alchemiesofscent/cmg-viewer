@@ -44,3 +44,7 @@ pnpm validate
 
 The deployed project URL is
 <https://alchemiesofscent.github.io/cmg-viewer/>.
+
+## Current release workflow
+
+UI pushes now restore a checksum-pinned corpus snapshot. Upstream synchronization runs independently in **Refresh corpus**. See [releasing.md](releasing.md) for the current workflows, bootstrap, browser checks and rollback.

@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('#continuous-reader')).toBeVisible();
 });
 
-test('page entry, Roman labels, rapid arrows and history', async ({ page }) => {
+test('page entry, Roman labels and rapid arrows', async ({ page }) => {
   const input = page.locator('#page-order');
   await input.fill('3');
   await page.getByRole('button', { name: 'Go to entered page' }).click();
@@ -44,8 +44,13 @@ test('corpus tree reaches another volume with consistent navigation', async ({ p
 test('tools, thumbnails and Escape restore focus', async ({ page }) => {
   await page.locator('#tools-toggle').click();
   await expect(page.locator('#reader-secondary-tools')).toBeVisible();
+  const initiallyOpen = await page.locator('#thumbnail-strip').isVisible();
   await page.locator('#thumbnails-toggle').click();
-  await expect(page.locator('#thumbnail-strip')).toBeVisible();
+  if (initiallyOpen) await expect(page.locator('#thumbnail-strip')).toBeHidden();
+  else await expect(page.locator('#thumbnail-strip')).toBeVisible();
+  await page.locator('#thumbnails-toggle').click();
+  if (initiallyOpen) await expect(page.locator('#thumbnail-strip')).toBeVisible();
+  else await expect(page.locator('#thumbnail-strip')).toBeHidden();
   await page.keyboard.press('Escape');
   await expect(page.locator('#reader-secondary-tools')).toBeHidden();
   await expect(page.locator('#tools-toggle')).toBeFocused();
@@ -88,6 +93,7 @@ test('spread jumps render one pair of pages', async ({ page }) => {
   await page.locator('#page-order').fill('5');
   await page.getByRole('button', { name: 'Go to entered page' }).click();
   await expect(page).toHaveURL(/pn=7/);
+  await expect.poll(() => page.evaluate(() => window.__cmgTify?.options.pages)).toEqual([6, 7]);
   await expect.poll(() => page.evaluate(() => window.__cmgTify?.viewer?.world?.getItemCount())).toBe(2);
 });
 
@@ -101,4 +107,35 @@ test('reader and open menus fit narrow and wide screens', async ({ page }) => {
     expect(box.x + box.width).toBeLessThanOrEqual(width + 1);
     await page.locator('#tools-toggle').click();
   }
+});
+
+test('focus view remains usable when native fullscreen is unavailable', async ({ page }) => {
+  await page.evaluate(() => {
+    Object.defineProperty(document.querySelector('.reader-app'), 'requestFullscreen', { value: undefined });
+    Object.defineProperty(document.querySelector('.reader-app'), 'webkitRequestFullscreen', { value: undefined });
+  });
+  await page.locator('#tools-toggle').click();
+  await page.locator('#fullscreen').click();
+  await expect(page.locator('.reader-app')).toHaveAttribute('data-fullscreen-mode', 'focus');
+  if (await page.locator('#reader-secondary-tools').isHidden()) await page.locator('#tools-toggle').click();
+  await page.locator('#fullscreen').click();
+  await expect(page.locator('.reader-app')).not.toHaveAttribute('data-fullscreen-mode');
+});
+
+test('simulated visual viewport keeps focused page entry above an obstruction', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('#page-order').focus();
+  await page.evaluate(() => {
+    Object.defineProperty(visualViewport, 'height', { configurable: true, value: 400 });
+    visualViewport.dispatchEvent(new Event('resize'));
+  });
+  await expect.poll(() => page.locator('#page-order').evaluate(el => el.getBoundingClientRect().bottom)).toBeLessThanOrEqual(401);
+  await page.locator('#page-order').fill('4');
+  await page.getByRole('button', { name: 'Go to entered page' }).click();
+  await expect(page).toHaveURL(/pn=6/);
+  await page.evaluate(() => {
+    delete visualViewport.height;
+    visualViewport.dispatchEvent(new Event('resize'));
+  });
+  await expect.poll(() => page.locator('.reader-toolbar').evaluate(el => parseFloat(el.style.getPropertyValue('--keyboard-lift')))).toBe(0);
 });
