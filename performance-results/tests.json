@@ -1,0 +1,178 @@
+{
+  "config": {
+    "argv": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/workspace/scratch/3fbeae128787/cmg-viewer/node_modules/.pnpm/@playwright+test@1.63.0/node_modules/@playwright/test/cli.js",
+      "test",
+      "--config",
+      "playwright.performance.config.js",
+      "--list"
+    ],
+    "configFile": "/workspace/scratch/3fbeae128787/cmg-viewer/playwright.performance.config.js",
+    "rootDir": "/workspace/scratch/3fbeae128787/cmg-viewer/tests/performance",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {},
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/workspace/scratch/3fbeae128787/cmg-viewer/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/workspace/scratch/3fbeae128787/cmg-viewer/tests/performance",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 180000
+      },
+      {
+        "outputDir": "/workspace/scratch/3fbeae128787/cmg-viewer/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "mobile-shaped",
+        "name": "mobile-shaped",
+        "testDir": "/workspace/scratch/3fbeae128787/cmg-viewer/tests/performance",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 180000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "performance-results/tests.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "loading.spec.js",
+      "file": "loading.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "cmg_01_01: cold and warm reading",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "2729cc19b869b3928a5a-180a024cc8ca71237726",
+          "file": "loading.spec.js",
+          "line": 5,
+          "column": 3
+        },
+        {
+          "title": "cmg_05_02_01: cold and warm reading",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "2729cc19b869b3928a5a-0e0feb97282dec3ffc3e",
+          "file": "loading.spec.js",
+          "line": 5,
+          "column": 3
+        },
+        {
+          "title": "cmg_01_01: cold and warm reading",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile-shaped",
+              "projectName": "mobile-shaped",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "2729cc19b869b3928a5a-41bccb62ea0a8b648db0",
+          "file": "loading.spec.js",
+          "line": 5,
+          "column": 3
+        },
+        {
+          "title": "cmg_05_02_01: cold and warm reading",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile-shaped",
+              "projectName": "mobile-shaped",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "2729cc19b869b3928a5a-8443e3668f6c47394a1d",
+          "file": "loading.spec.js",
+          "line": 5,
+          "column": 3
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-09-10T09:21:29.765Z",
+    "duration": 42.317999999999984,
+    "expected": 0,
+    "skipped": 4,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
