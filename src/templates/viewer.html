@@ -156,6 +156,29 @@
     </nav>
 
     <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+    <dialog id="pdf-export" class="pdf-export" aria-labelledby="export-heading">
+      <div class="share-panel-heading">
+        <h2 id="export-heading">Export PDF</h2>
+        <button id="export-close" type="button" aria-label="Close PDF export">×</button>
+      </div>
+      <a id="export-original" target="_blank" rel="noopener" hidden>Open current page’s original CMG PDF ↗</a>
+      <p>Create one PDF from high-resolution page scans. Up to 50 pages per export. These are image PDFs, without searchable text.</p>
+      <label for="export-mode">Pages to export</label>
+      <select id="export-mode"><option value="current">Current page</option><option value="range">Page range</option></select>
+      <div id="export-range" class="export-range" hidden>
+        <label>From <input id="export-from" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next"></label>
+        <label>To <input id="export-to" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></label>
+      </div>
+      <p>Enter a printed label (such as XII or 25), or a scan position (such as scan 25).</p>
+      <p id="export-summary" role="status"></p>
+      <div class="export-actions">
+        <button id="export-prepare" class="tool-button" type="button">Create PDF</button>
+        <button id="export-cancel" class="tool-button" type="button" hidden>Cancel</button>
+        <a id="export-download" class="tool-button" hidden>Save PDF</a>
+        <button id="export-share" class="tool-button" type="button" hidden>Share PDF</button>
+      </div>
+      <p id="export-status" role="status" aria-live="polite"></p>
+    </dialog>
     <aside class="contents-drawer" id="contents-drawer" role="dialog" aria-modal="true" aria-labelledby="contents-heading" aria-hidden="true" inert>
       <header class="drawer-header">
         <button class="contents-up" id="contents-up" type="button" aria-label="Up to volumes in this series">←</button>

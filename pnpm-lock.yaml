@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      pdf-lib:
+        specifier: 1.17.1
+        version: 1.17.1
       tify:
         specifier: 0.35.0
         version: 0.35.0
@@ -18,10 +21,22 @@ importers:
 
 packages:
 
+  '@pdf-lib/standard-fonts@1.0.0':
+    resolution: {integrity: sha512-hU30BK9IUN/su0Mn9VdlVKsWBS6GyhVfqjwl1FjZN4TxP6cCw0jP2w7V3Hf5uX7M0AZJ16vey9yE0ny7Sa59ZA==}
+
+  '@pdf-lib/upng@1.0.1':
+    resolution: {integrity: sha512-dQK2FUMQtowVP00mtIksrlZhdFXQZPC+taih1q4CvPZ5vqdxR/LKBaFg0oAfzd1GlHZXXSPdQfzQnt+ViGvEIQ==}
+
   '@playwright/test@1.63.0':
     resolution: {integrity: sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ==}
     engines: {node: '>=20'}
     hasBin: true
+
+  pako@1.0.11:
+    resolution: {integrity: sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw==}
+
+  pdf-lib@1.17.1:
+    resolution: {integrity: sha512-V/mpyJAoTsN4cnP31vc0wfNA1+p20evqqnap0KLoRUN0Yk/p3wN52DOEsL4oBFcLdb76hlpKPtzJIgo67j/XLw==}
 
   playwright-core@1.63.0:
     resolution: {integrity: sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg==}
@@ -37,11 +52,31 @@ packages:
     resolution: {integrity: sha512-fIEtR4XMoqIif+ksLaxWLjZb4yBsYddfKzr/nRnK0QSj455sf6DuYYaFL4YW0ZSZq9Oy8w4N7G7WjRaTcy+eAg==}
     engines: {node: '>= 20', npm: '>= 9'}
 
+  tslib@1.14.1:
+    resolution: {integrity: sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==}
+
 snapshots:
+
+  '@pdf-lib/standard-fonts@1.0.0':
+    dependencies:
+      pako: 1.0.11
+
+  '@pdf-lib/upng@1.0.1':
+    dependencies:
+      pako: 1.0.11
 
   '@playwright/test@1.63.0':
     dependencies:
       playwright: 1.63.0
+
+  pako@1.0.11: {}
+
+  pdf-lib@1.17.1:
+    dependencies:
+      '@pdf-lib/standard-fonts': 1.0.0
+      '@pdf-lib/upng': 1.0.1
+      pako: 1.0.11
+      tslib: 1.14.1
 
   playwright-core@1.63.0: {}
 
@@ -50,3 +85,5 @@ snapshots:
       playwright-core: 1.63.0
 
   tify@0.35.0: {}
+
+  tslib@1.14.1: {}

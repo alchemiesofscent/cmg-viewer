@@ -82,7 +82,7 @@ test('Info and Export open the actual viewer panels', async ({ page }) => {
   // Info may leave the disclosure open; normalize through its public toggle.
   if (await page.locator('#reader-secondary-tools').isHidden()) await page.locator('#tools-toggle').click();
   await page.locator('#export-toggle').click();
-  await expect.poll(() => page.evaluate(() => window.__cmgTify?.options.view)).toBe('export');
+  await expect(page.locator('#pdf-export')).toBeVisible();
 });
 
 test('spread jumps render one pair of pages', async ({ page }) => {
@@ -305,3 +305,51 @@ test('delayed programmatic scrolling ignores old scroll-end events', async ({ pa
    await expect(page.locator('#loading-results')).toBeHidden();
    await expect.poll(() => page.locator('.result-card').evaluateAll(cards => cards.map(card => card.dataset.itemId))).toEqual([...before].reverse());
  });
+
+test('PDF export validates ranges and downloads a combined PDF', async ({ page }) => {
+  const { readFileSync } = await import('node:fs');
+  const { PDFDocument } = await import('pdf-lib');
+  const images = JSON.parse(readFileSync('tests/export-images.json'));
+  await page.route('**/fixture-page.svg*', route => route.fulfill({
+    contentType: 'image/png', body: Buffer.from(images[0], 'base64'),
+  }));
+  await page.locator('#tools-toggle').click();
+  await page.locator('#export-toggle').click();
+  await expect(page.locator('#export-summary')).toContainText('1 page');
+  await page.locator('#export-mode').selectOption('range');
+  await page.locator('#export-from').fill('II');
+  await page.locator('#export-to').fill('2');
+  await expect(page.locator('#export-summary')).toContainText('3 pages · scans 2–4');
+  await page.locator('#export-prepare').click();
+  await expect(page.locator('#export-download')).toBeVisible();
+  const pending = page.waitForEvent('download');
+  await page.locator('#export-download').click();
+  const download = await pending;
+  expect(download.suggestedFilename()).toBe('fixture_a-scans-2-4.pdf');
+  const pdf = await PDFDocument.load(readFileSync(await download.path()));
+  expect(pdf.getPageCount()).toBe(3);
+  await page.locator('#export-from').fill('6');
+  await expect(page.locator('#export-prepare')).toBeDisabled();
+  await expect(page.locator('#export-download')).toBeHidden();
+  await page.locator('#export-close').click();
+  await expect(page.locator('#tools-toggle')).toBeFocused();
+});
+
+test('PDF export failure and cancellation leave retry available without partial download', async ({ page }) => {
+  await page.route('**/fixture-page.svg*', route => route.fulfill({ status: 503, body: 'Unavailable' }));
+  await page.locator('#tools-toggle').click();
+  await page.locator('#export-toggle').click();
+  await page.locator('#export-prepare').click();
+  await expect(page.locator('#export-status')).toContainText('Could not export');
+  await expect(page.locator('#export-download')).toBeHidden();
+  await expect(page.locator('#export-prepare')).toBeEnabled();
+  await page.unroute('**/fixture-page.svg*');
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  await page.route('**/fixture-page.svg*', async route => { await gate; await route.abort().catch(() => {}); });
+  await page.locator('#export-prepare').click();
+  await page.locator('#export-cancel').click();
+  release();
+  await expect(page.locator('#export-status')).toContainText('cancelled');
+  await expect(page.locator('#export-download')).toBeHidden();
+});

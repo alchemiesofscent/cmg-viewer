@@ -1539,3 +1539,20 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
 .contents-search-group { font-weight: 700; padding: .75rem 1rem; background: var(--reader-panel-surface); }
 #history-status { font-size: .875rem; margin: .35rem 0; }
 .contents-search input:focus-visible, .reading-history button:focus-visible, .reading-history summary:focus-visible { outline: 2px solid var(--reader-focus-color); outline-offset: -3px; }
+
+/* A top-aligned native modal keeps range fields reachable with the iOS keyboard. */
+.pdf-export { position: fixed; inset: max(1rem, env(safe-area-inset-top)) auto auto;
+  margin: 0 auto; width: min(30rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem);
+  overflow: auto; box-sizing: border-box; padding: 1rem; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--reader-panel-radius); font-family: var(--sans); }
+.pdf-export::backdrop { background: rgb(0 0 0 / 55%); }
+.pdf-export h2 { font-size: var(--reader-text-heading); margin: 0; }
+.pdf-export p { font-size: var(--reader-text-small); line-height: 1.5; }
+.pdf-export label { display: block; }
+.pdf-export input, .pdf-export select { box-sizing: border-box; width: 100%; min-width: 0;
+  padding: .65rem; font: inherit; font-size: 16px; margin: .4rem 0; }
+.export-range { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.export-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.pdf-export .tool-button { min-height: 44px; text-decoration: none; padding: .6rem .8rem; }
+.pdf-export [hidden] { display: none !important; }
+.pdf-export button { touch-action: manipulation; }
