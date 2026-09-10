@@ -878,3 +878,5 @@ body.authors-menu-open {
     flex-direction: column;
   }
 }
+
+.result-resume { display: inline-flex; align-items: center; min-height: 2.75rem; color: var(--teal); font-weight: 600; }

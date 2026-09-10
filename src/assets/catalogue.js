@@ -1,3 +1,5 @@
+import { createProgressStore } from './viewer-progress.js';
+const progress = createProgressStore();
 const PROJECT_PATH = '/cmg-viewer/';
 
 function projectBase() {
@@ -637,6 +639,14 @@ function resultCard(item) {
   const openLink = card.querySelector('.open-result');
   openLink.href = url;
   openLink.setAttribute('aria-label', `Open ${item.title} in the reader`);
+  if (progress.get(item.volumeId) != null) {
+    const resume = document.createElement('a');
+    resume.className = 'result-resume';
+    resume.href = new URL(`viewer/${encodeURIComponent(item.volumeId)}/`, BASE_URL).href;
+    resume.textContent = 'Resume this volume';
+    resume.setAttribute('aria-label', `Resume ${item.title} at your saved reading position`);
+    card.querySelector('.result-body').append(resume);
+  }
   return card;
 }
 
@@ -875,3 +885,6 @@ syncFilterDisclosure();
 if (elements.authorsMenuToggle) elements.authorsMenuToggle.disabled = true;
 readUrlState();
 loadCatalogue();
+
+// Refresh resume links after returning through the browser back/forward cache.
+window.addEventListener('pageshow', () => { if (state.items.length) renderResults(); });

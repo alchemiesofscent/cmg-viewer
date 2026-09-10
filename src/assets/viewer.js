@@ -1,3 +1,6 @@
+import { createProgressStore, initialPageIndex } from './viewer-progress.js';
+import { resolvePageEntry, pageReference, pageCitation } from './viewer-reference.js';
+import { createLoadingMetrics } from './viewer-metrics.js';
 import { setupKeyboardToolbar } from './viewer-keyboard.js';
 import { setupSharePanel } from './viewer-share.js';
 import { setupToolsMenu } from './viewer-tools.js';
@@ -31,6 +34,17 @@ function pathVolumeId() {
   return viewerIndex >= 0 ? decodeURIComponent(segments[viewerIndex + 1] || '') : '';
 }
 
+const progress = createProgressStore();
+const loadingMetrics = createLoadingMetrics();
+// Read-only snapshots for troubleshooting in browser developer tools.
+window.cmgLoadingTimings = () => loadingMetrics.snapshot();
+let savedPageOrder = null;
+let progressTimer = null;
+function flushProgress() {
+  window.clearTimeout(progressTimer);
+  progressTimer = null;
+  if (savedPageOrder != null) progress.save(volumeId, savedPageOrder);
+}
 const BASE_URL = projectBase();
 const volumeId = pathVolumeId();
 const corpusContents = setupCorpusContents({ baseUrl: BASE_URL, volumeId });
@@ -921,6 +935,7 @@ function hydrateContinuousImage(index) {
   }
 
   const image = document.createElement('img');
+  const finishImageTiming = loadingMetrics.start('reading-image', { scan: index + 1, primary, requestedWidth: pixelWidth });
   let usingThumbnailFallback = false;
   const printedLabel = sourcePageLabel(page);
   image.alt = printedLabel
@@ -936,6 +951,7 @@ function hydrateContinuousImage(index) {
     // Keep the preview (or existing zoom level) visible through image decode.
     try { await image.decode?.(); } catch { /* The load event still permits display. */ }
     if (entry.pendingImage !== image) return;
+    finishImageTiming(usingThumbnailFallback ? 'thumbnail-fallback' : 'ok');
     const previousImage = entry.image;
     entry.pendingImage = null;
     entry.pendingPixelWidth = 0;
@@ -962,6 +978,7 @@ function hydrateContinuousImage(index) {
     }
     entry.pendingImage = null;
     entry.pendingPixelWidth = 0;
+    finishImageTiming('error');
     entry.failedPixelWidth = pixelWidth;
     entry.failedAt = Date.now();
     entry.cancelPreview?.();
@@ -986,7 +1003,9 @@ function hydrateContinuousImage(index) {
 function showContinuousPreview(entry, page, index) {
   if (entry.image || entry.cancelPreview || !page.thumbnail || entry.pendingPixelWidth <= 400) return;
   if (page.thumbnail === continuousImageUrl(page, entry.pendingPixelWidth)) return;
+  const finishPreview = loadingMetrics.start('preview', { scan: index + 1 });
   entry.cancelPreview = startImagePreview(entry.frame, page.thumbnail, {
+    onReady: () => finishPreview(),
     alt: `${pageDisplay(page, index)} (preview)`,
     width: page.width,
     height: page.height,
@@ -1737,7 +1756,12 @@ function updatePageUi({ centerThumbnail: shouldCenterThumbnail = true, smoothThu
   elements.next.disabled = state.index >= state.pages.length - 1;
   elements.single.setAttribute('aria-pressed', String(state.mode === 'single'));
   elements.spread.setAttribute('aria-pressed', String(state.mode === 'spread'));
-  elements.pageStatus.textContent = pageStatusText(visibleIndices);
+  elements.pageStatus.textContent = `${pageStatusText(visibleIndices)} · Scan ${state.index + 1} of ${state.pages.length}`;
+  if (savedPageOrder !== page.order) {
+    savedPageOrder = page.order;
+    window.clearTimeout(progressTimer);
+    progressTimer = window.setTimeout(flushProgress, 300);
+  }
   updateTifyViewControls();
   if (updateUrl) updateAddress();
   updateSourceHref();
@@ -1797,14 +1821,14 @@ function setMode(mode) {
 }
 
 function firstIndexFromQuery() {
-  const requested = integerValue(new URLSearchParams(window.location.search).get('pn'));
-  if (requested == null) {
-    const defaultOrder = integerValue(state.volume.defaultPn, state.volume.default_pn, state.volume.startPn, state.volume.start_pn);
-    return defaultOrder != null && state.orderIndex.has(defaultOrder) ? state.orderIndex.get(defaultOrder) : 0;
-  }
-  if (state.orderIndex.has(requested)) return state.orderIndex.get(requested);
-  window.setTimeout(() => announce(`The linked page is not present in this volume. Opened page 1 instead.`), 100);
-  return 0;
+  const result = initialPageIndex({
+    query: new URLSearchParams(window.location.search),
+    savedOrder: progress.get(volumeId),
+    defaultOrder: integerValue(state.volume.defaultPn, state.volume.default_pn, state.volume.startPn, state.volume.start_pn),
+    orderIndex: state.orderIndex,
+  });
+  if (result.invalidLink) window.setTimeout(() => announce('The linked page is not present in this volume. Opened the first scan instead.'), 100);
+  return result.index;
 }
 
 function loadStylesheet(href) {
@@ -1846,7 +1870,7 @@ async function loadTifyAssets() {
 
 async function startTify(generation = state.generation) {
   if (!state.manifest || new URLSearchParams(window.location.search).get('fallback') === '1') throw new Error('Basic reader requested.');
-  const Tify = await Promise.race([loadTifyAssets(), timeout(8000, 'TIFY assets timed out.')]);
+  const Tify = await loadingMetrics.measure('tify-assets', () => Promise.race([loadTifyAssets(), timeout(8000, 'TIFY assets timed out.')]));
   const pages = spreadPageNumbers();
   const viewer = new Tify({
     container: '#tify',
@@ -1863,7 +1887,7 @@ async function startTify(generation = state.generation) {
     },
   });
   try {
-    await Promise.race([viewer.ready, timeout(12000, 'TIFY did not become ready.')]);
+    await loadingMetrics.measure('tify-ready', () => Promise.race([viewer.ready, timeout(12000, 'TIFY did not become ready.')]));
   } catch (error) {
     viewer.destroy?.();
     throw error;
@@ -1957,6 +1981,7 @@ async function initialize() {
     return;
   }
 
+  loadingMetrics.reset();
   state.generation += 1;
   cancelContinuousTouchZoom();
   state.controller?.abort();
@@ -2009,8 +2034,8 @@ async function initialize() {
   elements.loadingDetail.textContent = 'Loading its description and IIIF manifest…';
 
   const [volumeResult, manifestResult] = await Promise.allSettled([
-    fetchJson(VOLUME_URL, state.controller.signal),
-    fetchJson(MANIFEST_URL, state.controller.signal),
+    loadingMetrics.measure('volume-json', () => fetchJson(VOLUME_URL, state.controller.signal)),
+    loadingMetrics.measure('manifest-json', () => fetchJson(MANIFEST_URL, state.controller.signal)),
   ]);
   if (state.controller.signal.aborted) return;
 
@@ -2422,29 +2447,9 @@ elements.zoomOut.addEventListener('click', () => changeZoom(0.75));
 elements.zoomIn.addEventListener('click', () => changeZoom(1.333));
 elements.resetZoom.addEventListener('click', resetZoom);
 function goToPageFromField() {
-  const requested = textValue(elements.orderInput.value);
-  const folded = requested.toLocaleLowerCase();
-  const labelMatches = state.pages
-    .map((page, index) => ({ index, label: sourcePageLabel(page).toLocaleLowerCase() }))
-    .filter((entry) => entry.label && entry.label === folded)
-    .map((entry) => entry.index);
-  let targetIndex = null;
-  if (labelMatches.includes(state.index)) {
-    targetIndex = state.index;
-  } else if (labelMatches.length) {
-    targetIndex = labelMatches.reduce((nearest, index) => (
-      Math.abs(index - state.index) < Math.abs(nearest - state.index) ? index : nearest
-    ), labelMatches[0]);
-  } else {
-    const pageNumber = integerValue(requested);
-    if (pageNumber != null && state.orderIndex.has(pageNumber)) {
-      targetIndex = state.orderIndex.get(pageNumber);
-    } else if (pageNumber != null && state.pages[pageNumber - 1]) {
-      targetIndex = pageNumber - 1;
-    }
-  }
+  const targetIndex = resolvePageEntry(elements.orderInput.value, state.pages, state.index, sourcePageLabel);
   if (targetIndex == null) {
-    elements.orderInput.setCustomValidity('Enter a page number or label available in this volume.');
+    elements.orderInput.setCustomValidity('Enter a page label or a scan position such as “scan 25”.');
     elements.orderInput.reportValidity();
     return false;
   }
@@ -2544,6 +2549,17 @@ setupSharePanel({
   close: document.querySelector('#share-close'),
   status: document.querySelector('#share-status'),
   getUrl: () => window.location.href,
+  reference: document.querySelector('#share-reference'),
+  citation: document.querySelector('#share-citation'),
+  copyCitation: document.querySelector('#copy-citation'),
+  getReference: () => {
+    const page = state.pages[state.index];
+    return page ? pageReference({ label: sourcePageLabel(page), order: page.order, index: state.index, count: state.pages.length }) : '';
+  },
+  getCitation: () => {
+    const page = state.pages[state.index];
+    return page ? pageCitation({ title: elements.title.textContent, label: sourcePageLabel(page), order: page.order, index: state.index, url: window.location.href }) : '';
+  },
   clipboard: navigator.clipboard,
 });
 
@@ -2558,7 +2574,7 @@ document.addEventListener('fullscreenerror', handleNativeFullscreenError);
 document.addEventListener('webkitfullscreenerror', handleNativeFullscreenError);
 
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) cancelContinuousTouchZoom();
+  if (document.hidden) { flushProgress(); cancelContinuousTouchZoom(); }
 });
 
 elements.tify.addEventListener('keydown', (event) => {
@@ -2667,6 +2683,7 @@ elements.continuousReader.addEventListener('touchmove', preventNativeContinuousT
 elements.continuousScroll.addEventListener('scrollend', cancelContinuousTarget, { passive: true });
 
 window.addEventListener('pagehide', () => {
+  flushProgress();
   state.fullscreenRequestToken += 1;
   hideFullscreenNotice();
   if (state.fullscreenLayoutTimer != null) window.clearTimeout(state.fullscreenLayoutTimer);

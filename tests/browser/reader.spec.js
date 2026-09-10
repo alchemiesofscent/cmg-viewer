@@ -143,3 +143,67 @@ test('simulated visual viewport keeps focused page entry above an obstruction', 
   });
   await expect.poll(() => page.locator('.reader-toolbar').evaluate(el => parseFloat(el.style.getPropertyValue('--keyboard-lift')))).toBe(0);
 });
+
+test('remembered positions resume per volume while explicit page links win', async ({ page }) => {
+  await page.locator('#page-order').fill('scan 7');
+  await page.locator('#page-order').press('Enter');
+  await expect(page).toHaveURL(/pn=7/);
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('cmg-reader-progress-v1') || '{}').fixture_a?.order)).toBe(7);
+  await page.goto('viewer/fixture_b/');
+  await expect(page.locator('#reader-loading')).toBeHidden();
+  await expect(page).toHaveURL(/pn=1/);
+  await page.goto('viewer/fixture_a/');
+  await expect(page.locator('#reader-loading')).toBeHidden();
+  await expect(page).toHaveURL(/pn=7/);
+  await page.goto('viewer/fixture_a/?pn=2');
+  await expect(page.locator('#reader-loading')).toBeHidden();
+  await expect(page).toHaveURL(/pn=2/);
+});
+
+test('catalogue provides a separate resume link without changing work links', async ({ page }) => {
+  await page.locator('#page-order').fill('scan 6');
+  await page.locator('#page-order').press('Enter');
+  await expect(page).toHaveURL(/pn=6/);
+  await page.goto('./');
+  // Filter to the relevant work.
+  await page.locator('#catalogue-search').fill('Synthetic browser test volume I 1');
+  const resume = page.locator('.result-resume[href*="fixture_a"]');
+  await expect(resume).toBeVisible();
+  await expect(page.locator('.open-result[href*="fixture_a"]')).toHaveAttribute('href', /pn=1/);
+  await resume.click();
+  await expect(page.locator('#reader-loading')).toBeHidden();
+  await expect(page).toHaveURL(/pn=6/);
+});
+
+test('scan entry and citation expose distinct page coordinates', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+    writeText: async text => { window.copiedCitation = text; },
+  } }));
+  await page.reload();
+  await expect(page.locator('#reader-loading')).toBeHidden();
+  await page.locator('#page-order').fill('scan 5');
+  await page.locator('#page-order').press('Enter');
+  await expect(page).toHaveURL(/pn=5/);
+  await page.locator('#share-view').click();
+  await expect(page.locator('#share-reference')).toHaveText('Page label 3 · Scan 5 of 8');
+  await expect(page.locator('#share-citation')).toHaveValue(/p\. 3\..*pn=5/);
+  await page.locator('#copy-citation').click();
+  await expect(page.locator('#share-status')).toHaveText('Citation copied.');
+  await expect.poll(() => page.evaluate(() => window.copiedCitation)).toMatch(/p\. 3\./);
+  await page.evaluate(() => { navigator.clipboard.writeText = async () => { throw new Error('denied'); }; });
+  await page.locator('#copy-citation').click();
+  await expect(page.locator('#share-citation')).toBeFocused();
+  await expect(page.locator('#share-status')).toContainText('Select and copy the citation');
+});
+
+test('blocked position storage does not prevent reading; timings remain local', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(window, 'localStorage', { get() { throw new Error('storage blocked'); } }));
+  await page.reload();
+  await expect(page.locator('#reader-loading')).toBeHidden();
+  await page.locator('#next-page').click();
+  await expect(page).toHaveURL(/pn=2/);
+  await expect.poll(() => page.evaluate(() => window.cmgLoadingTimings().filter(row => row.name === 'reading-image' && row.status === 'ok').length)).toBeGreaterThan(0);
+  const names = await page.evaluate(() => window.cmgLoadingTimings().map(row => row.name));
+  expect(names).toContain('volume-json');
+  expect(names).toContain('manifest-json');
+});

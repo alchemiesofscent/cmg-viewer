@@ -11,7 +11,7 @@ export function pageLoadOrder(index, count, radius = 1) {
 
 // The returned cleanup also invalidates a late load event, so a preview can
 // never cover a sharper image or reappear after navigation releases the page.
-export function startImagePreview(frame, source, { alt, width, height, createImage = () => document.createElement('img') }) {
+export function startImagePreview(frame, source, { alt, width, height, onReady = () => {}, createImage = () => document.createElement('img') }) {
   const image = createImage();
   let active = true;
   image.alt = alt;
@@ -24,6 +24,7 @@ export function startImagePreview(frame, source, { alt, width, height, createIma
     if (!active) return;
     frame.prepend(image);
     frame.dataset.preview = 'true';
+    onReady();
   }, { once: true });
   // A missing thumbnail must never interfere with the reading image request.
   image.addEventListener('error', () => {}, { once: true });
