@@ -46,7 +46,7 @@ export function filterCorpusGroups(groups, query) {
   const terms = fold(query).trim().split(/\s+/).filter(Boolean);
   return groups.map(group => ({ ...group, volumes: group.volumes.filter(volume => {
     const text = fold([volume.shelfmark, ...volume.titles, ...(volume.authors || [])].join(' '));
-    return terms.every(term => text.includes(term));
+    return terms.every(term => /^[ivxlcdm]+$/.test(term) ? text.split(/[^\p{L}\p{N}]+/u).includes(term) : text.includes(term));
   }) })).filter(group => group.volumes.length);
 }
 
