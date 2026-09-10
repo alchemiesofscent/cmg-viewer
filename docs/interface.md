@@ -58,3 +58,5 @@ They have no OCR text layer. PDF metadata includes the volume title and reader
 source URL. A lazy-loaded, self-hosted PDF-LIB dependency creates the file; no
 third-party export service receives the selection. Save PDF and supported native
 file sharing require an explicit tap after preparation, including on iOS.
+
+Desktop scroll mode supports Shift + mouse wheel: up zooms in, down zooms out, anchored to the page under the pointer. Normal scrolling and browser Ctrl/Command zoom are unchanged. Sharper image requests wait until wheel input settles.

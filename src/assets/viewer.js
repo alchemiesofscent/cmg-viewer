@@ -2259,7 +2259,36 @@ elements.continuousScroll.addEventListener('scroll', () => {
   if (!continuousTouchZoom.kind) clearContinuousDoubleTap();
   scheduleContinuousPageSync();
 }, { passive: true });
-elements.continuousScroll.addEventListener('wheel', cancelContinuousTarget, { passive: true });
+let wheelZoomTimer;
+elements.continuousScroll.addEventListener('wheel', (event) => {
+  cancelContinuousTarget();
+  if (!event.shiftKey || event.ctrlKey || event.metaKey || event.altKey || mobileMedia.matches
+      || state.mode !== 'single' || elements.continuousReader.hidden) return;
+  // Some platforms convert Shift+vertical wheel to a horizontal wheel delta.
+  const delta = event.deltaY || event.deltaX;
+  if (!delta) return;
+  event.preventDefault();
+  const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? elements.continuousScroll.clientHeight : 1;
+  const zoom = clampContinuousZoom(state.zoom * Math.exp(-Math.max(-240, Math.min(240, delta * scale)) * 0.002));
+  if (zoom === state.zoom) return;
+  const entry = state.continuousEntries.find(item => item.frame.contains(event.target))
+    || state.continuousEntries[state.index];
+  if (!entry) return;
+  const before = entry.frame.getBoundingClientRect();
+  const x = Math.max(0, Math.min(1, (event.clientX - before.left) / before.width));
+  const y = Math.max(0, Math.min(1, (event.clientY - before.top) / before.height));
+  state.zoom = zoom;
+  applyContinuousZoom();
+  const after = entry.frame.getBoundingClientRect();
+  elements.continuousScroll.scrollLeft += after.left + after.width * x - (before.left + before.width * x);
+  elements.continuousScroll.scrollTop += after.top + after.height * y - (before.top + before.height * y);
+  clearTimeout(wheelZoomTimer);
+  wheelZoomTimer = setTimeout(() => {
+    if (state.mode !== 'single' || elements.continuousReader.hidden) return;
+    for (const index of pageLoadOrder(state.index, state.pages.length)) hydrateContinuousImage(index);
+    announce(`Zoom ${Math.round(state.zoom * 100)} percent.`);
+  }, 140);
+}, { passive: false });
 elements.continuousReader.addEventListener('pointerdown', handleContinuousPointerDown, { passive: false });
 elements.continuousReader.addEventListener('pointermove', handleContinuousPointerMove, { passive: false });
 elements.continuousReader.addEventListener('pointerup', handleContinuousPointerUp);
