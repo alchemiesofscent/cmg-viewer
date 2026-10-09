@@ -10,6 +10,7 @@ import { setupKeyboardToolbar } from './viewer-keyboard.js';
 import { setupSharePanel } from './viewer-share.js';
 import { setupToolsMenu } from './viewer-tools.js';
 import { setupCorpusContents } from './viewer-corpus.js';
+import { setupDragPan } from './viewer-drag-pan.js';
 import {
   clampZoom,
   dragZoom,
@@ -2289,6 +2290,16 @@ elements.continuousScroll.addEventListener('wheel', (event) => {
     announce(`Zoom ${Math.round(state.zoom * 100)} percent.`);
   }, 140);
 }, { passive: false });
+setupDragPan(elements.continuousScroll, {
+  enabled: () => state.mode === 'single' && !elements.continuousReader.hidden && !continuousTouchZoom.kind,
+  onStart: () => {
+    cancelContinuousTarget();
+    clearContinuousDoubleTap();
+  },
+});
+setupDragPan(elements.fallbackScroll, {
+  enabled: () => state.zoom > 1.01 && !elements.fallback.hidden,
+});
 elements.continuousReader.addEventListener('pointerdown', handleContinuousPointerDown, { passive: false });
 elements.continuousReader.addEventListener('pointermove', handleContinuousPointerMove, { passive: false });
 elements.continuousReader.addEventListener('pointerup', handleContinuousPointerUp);

@@ -376,3 +376,64 @@ test('desktop Shift-wheel zooms around the pointer while ordinary wheel scrolls'
   await page.keyboard.up('Shift');
   await expect.poll(async () => Number(await page.locator('#continuous-reader').getAttribute('data-reader-zoom'))).toBeLessThan(Number(zoom));
 });
+
+test('desktop mouse drag pans the zoomed page without selecting text or changing zoom', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Desktop mouse gesture');
+  const scroller = page.locator('#continuous-scroll');
+  if (!await page.locator('#zoom-in').isVisible()) await page.locator('#tools-toggle').click();
+  for (let i = 0; i < 3; i++) await page.locator('#zoom-in').click();
+  await expect.poll(async () => Number(await page.locator('#continuous-reader').getAttribute('data-reader-zoom'))).toBeGreaterThan(2);
+  const zoom = await page.locator('#continuous-reader').getAttribute('data-reader-zoom');
+  await expect(scroller).toHaveCSS('cursor', 'grab');
+  const box = await scroller.boundingBox();
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+  await scroller.evaluate(el => { el.scrollLeft = 200; });
+  const before = await scroller.evaluate(el => ({ left: el.scrollLeft, top: el.scrollTop }));
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x - 40, y - 60, { steps: 4 });
+  await expect(scroller).toHaveAttribute('data-panning', 'true');
+  await expect(scroller).toHaveCSS('cursor', 'grabbing');
+  await page.mouse.move(x - 80, y - 120, { steps: 4 });
+  await page.mouse.up();
+  await expect(scroller).not.toHaveAttribute('data-panning', /.*/);
+  const after = await scroller.evaluate(el => ({ left: el.scrollLeft, top: el.scrollTop }));
+  expect(Math.abs(after.left - before.left - 80)).toBeLessThan(3);
+  expect(Math.abs(after.top - before.top - 120)).toBeLessThan(3);
+  expect(await page.evaluate(() => String(window.getSelection()))).toBe('');
+  await expect(page.locator('#continuous-reader')).toHaveAttribute('data-reader-zoom', zoom);
+  // Dragging back the other way follows the pointer too.
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 50, y + 70, { steps: 5 });
+  await page.mouse.up();
+  const back = await scroller.evaluate(el => ({ left: el.scrollLeft, top: el.scrollTop }));
+  expect(Math.abs(after.left - back.left - 50)).toBeLessThan(3);
+  expect(Math.abs(after.top - back.top - 70)).toBeLessThan(3);
+});
+
+test('basic spread reader turns pages by dragging at fit and pans once zoomed', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Desktop mouse gesture');
+  await page.goto('viewer/fixture_a/?fallback=1&view=spread');
+  await expect(page.locator('#fallback-reader')).toBeVisible();
+  const scroller = page.locator('#fallback-scroll');
+  const box = await scroller.boundingBox();
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+  const startUrl = page.url();
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x - 120, y, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(() => page.url()).not.toBe(startUrl);
+  if (!await page.locator('#zoom-in').isVisible()) await page.locator('#tools-toggle').click();
+  for (let i = 0; i < 4; i++) await page.locator('#zoom-in').click();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#fallback-pages')).toHaveCSS('cursor', 'grab');
+  const zoomedUrl = page.url();
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x - 60, y - 90, { steps: 5 });
+  await page.mouse.up();
+  expect(await scroller.evaluate(el => [el.scrollLeft, el.scrollTop])).toEqual([60, 90]);
+  expect(page.url()).toBe(zoomedUrl);
+});
