@@ -101,4 +101,4 @@ Credits and funding are published on the [About page](https://alchemiesofscent.g
 
 ## Regression checks and releases
 
-See [release and snapshot documentation](docs/releasing.md) for browser checks, independent corpus refreshes, reproducible UI deployment, and rollback. Reader interface tokens are documented in [interface styles](docs/interface.md).
+See [release and snapshot documentation](docs/releasing.md) for reader version numbers, browser checks, independent corpus refreshes, reproducible UI deployment, and rollback. Reader interface tokens are documented in [interface styles](docs/interface.md).

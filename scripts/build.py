@@ -173,8 +173,30 @@ def build_site(
     shutil.copy2(pdf_source, pdf_target / pdf_source.name)
     shutil.copy2(pdf_source.parent.parent / "LICENSE.md", pdf_target / "LICENSE.md")
     write_pages_support(dist, base_path)
+    stamp_release_version(dist)
     version_ui_assets(dist)
     return volume_ids
+
+
+RELEASE_VERSION_MARKER = "{{RELEASE_VERSION}}"
+
+
+def release_version() -> str:
+    """Return the reader's release version, recorded once in package.json."""
+    package = json.loads((PROJECT_ROOT / "package.json").read_text(encoding="utf-8"))
+    version = package.get("version", "")
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
+        raise ValueError(f"package.json version must be MAJOR.MINOR.PATCH, found {version!r}")
+    return version
+
+
+def stamp_release_version(dist: Path, version: str | None = None) -> None:
+    """Replace the release-version marker in built pages."""
+    version = version or release_version()
+    for path in dist.rglob("*.html"):
+        text = path.read_text(encoding="utf-8")
+        if RELEASE_VERSION_MARKER in text:
+            path.write_text(text.replace(RELEASE_VERSION_MARKER, version), encoding="utf-8")
 
 
 def version_ui_assets(dist: Path) -> None:
