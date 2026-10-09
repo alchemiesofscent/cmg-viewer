@@ -4,7 +4,13 @@ Every pull request runs the Python/JavaScript tests and browser checks with desk
 
 Run `pnpm test` locally. To run browser tests in a normal development environment, install browsers with `pnpm exec playwright install --with-deps chromium webkit`, then run `pnpm test:browser`. The tests start their own fixture server on port 8000; stop any other server on that port first.
 
-## Release flow
+## Reader versions
+
+The reader interface has a [Semantic Versioning](https://semver.org/) release number, separate from corpus snapshots. `package.json` holds the current version, and `CHANGELOG.md` must have a matching top section; the Python tests enforce this. A pull request that should ship as a new release bumps both together: a minor version for new reader features, a patch version for fixes.
+
+When that change reaches `main`, the **Tag reader release** workflow creates the `v<version>` tag on the merge commit and a GitHub release whose notes are the changelog section. A version that is already released is skipped, so unrelated merges never retag. The build stamps the version into the About page, and `build-info.json` records it as `uiVersion` alongside the exact `uiRevision` and corpus snapshot.
+
+## Corpus release flow
 
 The **Refresh corpus** workflow runs monthly, manually, and when ingestion configuration changes. It synchronizes the full corpus, builds the site and runs the full artifact validator before publishing a uniquely tagged GitHub release containing `corpus.tar.gz` and `snapshot.json`. Only metadata and IIIF JSON are archived; scan images stay at BBAW. The workflow commits the snapshot's tag and SHA-256 checksum to `config/corpus-snapshot.json`, then its successful completion starts the Pages workflow.
 

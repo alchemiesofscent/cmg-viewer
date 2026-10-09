@@ -60,6 +60,7 @@ def unpack(archive, dist, pin):
             shutil.copytree(root / name, dist / name)
     write_json(dist / 'corpus-snapshot.json', pin)
     write_json(dist / 'build-info.json', {
+        'uiVersion': json.loads(Path('package.json').read_text(encoding='utf-8'))['version'],
         'uiRevision': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
         'corpusSnapshot': pin,
     })

@@ -7,5 +7,6 @@
 .about-content h2 { font-size: 1.2rem; margin: 0 0 1rem; }
 .about-name { font-size: 1.6rem; font-weight: 600; margin: 0; }
 .about-content a { overflow-wrap: anywhere; }
+.about-version { color: var(--ink-soft); font-size: .9rem; }
 
 .credit-footer { max-width: 48rem; margin: 0 auto; padding: 1.25rem; border-top: 1px solid var(--line); font-size: .85rem; color: var(--ink-soft); line-height: 1.6; }
