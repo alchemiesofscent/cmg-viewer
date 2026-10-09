@@ -4,6 +4,10 @@ Notable changes to the CMG Reader interface. Corpus data is versioned separately
 
 Versions follow [Semantic Versioning](https://semver.org/): a minor version adds reader features, a patch version fixes behaviour without adding features. Each version is tagged `v<version>` with a matching GitHub release when it reaches `main`.
 
+## 0.2.0
+
+- Desktop mouse drag-to-pan: press the left button on the page and drag to move it, especially when zoomed in. Works in scroll mode and in the zoomed basic spread reader; touch gestures, scrollbars and controls are unchanged.
+
 ## 0.1.0
 
 Baseline release: the reader as deployed before versioning was introduced (through #25).

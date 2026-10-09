@@ -1558,3 +1558,23 @@ html[data-reader-fullscreen="focus"] body.viewer-page {
 .pdf-export button { touch-action: manipulation; }
 
 .reader-credit { flex-basis: 100%; grid-column: 1 / -1; font-size: .8rem; line-height: 1.5; padding-top: .5rem; border-top: 1px solid var(--line); }
+
+/* Desktop mouse drag-to-pan (viewer-drag-pan.js). The fallback spread only
+   pans once zoomed; at fit, a horizontal drag still turns the page. */
+@media (hover: hover) and (pointer: fine) {
+  .continuous-scroll,
+  .fallback-pages[data-zoomed="true"] {
+    cursor: grab;
+  }
+
+  .continuous-scroll[data-panning="true"],
+  .fallback-scroll[data-panning="true"],
+  .fallback-scroll[data-panning="true"] .fallback-pages {
+    cursor: grabbing;
+  }
+}
+
+.continuous-scroll[data-panning="true"],
+.fallback-scroll[data-panning="true"] {
+  user-select: none;
+}

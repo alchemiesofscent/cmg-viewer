@@ -60,3 +60,5 @@ third-party export service receives the selection. Save PDF and supported native
 file sharing require an explicit tap after preparation, including on iOS.
 
 Desktop scroll mode supports Shift + mouse wheel: up zooms in, down zooms out, anchored to the page under the pointer. Normal scrolling and browser Ctrl/Command zoom are unchanged. Sharper image requests wait until wheel input settles.
+
+With a mouse, press the left button on the page and drag to pan, as with a PDF hand tool: the page follows the pointer horizontally and vertically, which matters most when zoomed in. This works in scroll mode at any zoom and in the basic spread reader once zoomed; at fit, a horizontal drag in the basic spread reader still turns the page, and the TIFY spread view keeps its own panning. Touch, pen, modified clicks, scrollbars and controls are unaffected. `viewer-drag-pan.js` owns this behaviour.
