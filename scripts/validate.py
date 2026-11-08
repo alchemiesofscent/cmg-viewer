@@ -321,7 +321,12 @@ def validate_volume(
         validate_url(page.get("sourcePageUrl", ""), host="cmg.bbaw.de")
         parsed_source = urllib.parse.urlsplit(page["sourcePageUrl"])
         query = urllib.parse.parse_qs(parsed_source.query)
-        require(query.get("pn") == [str(order)], f"CMG backlink pn mismatch: {volume_id} ORDER {order}")
+        legacy_pn = page.get("legacyPn", order)
+        require(
+            isinstance(legacy_pn, int) and legacy_pn >= 1,
+            f"Invalid legacy pn: {volume_id} ORDER {order}",
+        )
+        require(query.get("pn") == [str(legacy_pn)], f"CMG backlink pn mismatch: {volume_id} ORDER {order}")
         body = canvas.get("items", [{}])[0].get("items", [{}])[0].get("body", {})
         body_services = body.get("service", [])
         require(

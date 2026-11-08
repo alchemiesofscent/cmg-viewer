@@ -153,6 +153,8 @@ def build_plans(
         seed["metsPath"] = (
             override["metsPath"] if override else default_pattern.format(viewerStem=volume_id)
         )
+        if override and override.get("directoryPositionFromLabel"):
+            seed["directoryPositionFromLabel"] = True
         plans.append(
             {
                 "kind": "mets-override" if override else "mets-predictable",

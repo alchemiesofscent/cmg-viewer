@@ -162,6 +162,32 @@ class METSTests(unittest.TestCase):
         self.assertEqual((pages[0]["width"], pages[0]["height"]), (1200, 1800))
         self.assertTrue(pages[0]["imageServiceId"].endswith("!part_01_0000"))
 
+    def test_reviewed_label_position_skips_omitted_placeholder_scans(self) -> None:
+        # The METS omits blank placeholders that the Digilib directory keeps,
+        # so physical ORDER 3 (printed page 5) is directory position 5.
+        canvases = ",".join(
+            f'{{"type": "Canvas", "label": {{"none": ["vol_{index:04d}"]}}, '
+            f'"width": {1000 + index}, "height": 1500}}'
+            for index in range(1, 7)
+        )
+        payload = f'{{"type": "Manifest", "items": [{canvases}]}}'.encode()
+        pages = [
+            {"order": 1, "label": "I", "directoryPosition": 1,
+             "maxHref": "https://example.test/vol-001-max.jpg"},
+            {"order": 3, "label": "5", "directoryPosition": 5,
+             "maxHref": "https://example.test/vol-003-max.jpg"},
+        ]
+        missing = sync.enrich_pages_from_manifester(
+            pages,
+            payload,
+            fn_directory="/silo10/cmg/vol/",
+            directory_page_count=6,
+        )
+        self.assertEqual(missing, [])
+        self.assertEqual([page["imageBasename"] for page in pages], ["vol_0001", "vol_0005"])
+        self.assertEqual(pages[1]["width"], 1005)
+        self.assertTrue(pages[1]["imageServiceId"].endswith("!vol_0005"))
+
     def test_repairs_single_duplicate_physical_order_from_stable_ids(self) -> None:
         payload = METS_FIXTURE
         for old, temporary in (

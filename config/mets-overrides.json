@@ -63,7 +63,8 @@
       "viewerId": "wa_Athena_18_1905",
       "viewerPath": "wa_Athena_18_1905.php",
       "metsPath": "mets/wa_aet_lib_med_XIII.xml",
-      "evidence": "active-dfg-viewer-link"
+      "evidence": "active-dfg-viewer-link",
+      "directoryPositionFromLabel": true
     },
     {
       "viewerId": "wa_Athena_21_1909",

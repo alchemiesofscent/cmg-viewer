@@ -651,13 +651,14 @@ def enrich_pages_from_manifester(
     for page in pages:
         basename = page.get("imageBasename") or max_basename(page["maxHref"])
         matched_basename = basename
-        if positionally_indexed and 1 <= page["order"] <= len(directory_labels):
+        position = page.get("directoryPosition", page["order"])
+        if positionally_indexed and 1 <= position <= len(directory_labels):
             # The legacy Scaler's pn is the one-based position in its directory
             # sequence.  When that reviewed sequence count exactly matches the
             # active viewer bounds (allowing only a few inaccessible trailing
             # auxiliaries), this is a stronger join than a stale METS derivative
             # filename (notably multi-part CML and the Diels preliminaries).
-            matched_basename = directory_labels[page["order"] - 1]
+            matched_basename = directory_labels[position - 1]
             match = dimensions[matched_basename]
         else:
             match = dimensions.get(basename)
@@ -666,7 +667,7 @@ def enrich_pages_from_manifester(
                 candidate
                 for candidate in dimensions
                 if (suffix := re.search(r"(?:^|[_-])(\d+)$", candidate))
-                and int(suffix.group(1)) == page["order"]
+                and int(suffix.group(1)) == position
             ]
             if len(numbered) == 1:
                 matched_basename = numbered[0]
@@ -1041,22 +1042,24 @@ def build_volume_record(
     normalized_pages: list[dict[str, Any]] = []
     for index, page in enumerate(pages):
         order = page["order"]
-        source_page = f"{viewer_url}?custom=1&pn={order}&AnzFrames=1"
-        normalized_pages.append(
-            {
-                "index": index,
-                "order": order,
-                "label": page["label"],
-                "width": page["width"],
-                "height": page["height"],
-                "canvasId": f"{base_url}/iiif/{volume_id}/canvas/p{order}",
-                "imageServiceId": page["imageServiceId"],
-                "imageUrl": f"{page['imageServiceId']}/full/full/0/default.jpg",
-                "thumbnailUrl": f"{page['imageServiceId']}/full/200,/0/default.jpg",
-                "sourcePageUrl": source_page,
-                "maxDerivativeUrl": page["maxHref"],
-            }
-        )
+        legacy_pn = page.get("directoryPosition", order)
+        source_page = f"{viewer_url}?custom=1&pn={legacy_pn}&AnzFrames=1"
+        normalized_page = {
+            "index": index,
+            "order": order,
+            "label": page["label"],
+            "width": page["width"],
+            "height": page["height"],
+            "canvasId": f"{base_url}/iiif/{volume_id}/canvas/p{order}",
+            "imageServiceId": page["imageServiceId"],
+            "imageUrl": f"{page['imageServiceId']}/full/full/0/default.jpg",
+            "thumbnailUrl": f"{page['imageServiceId']}/full/200,/0/default.jpg",
+            "sourcePageUrl": source_page,
+            "maxDerivativeUrl": page["maxHref"],
+        }
+        if legacy_pn != order:
+            normalized_page["legacyPn"] = legacy_pn
+        normalized_pages.append(normalized_page)
     source = {
         "viewerUrl": viewer_url,
         "imageProvider": "https://digilib.bbaw.de/",
@@ -1207,6 +1210,15 @@ def sync_volume(
         page["imageServiceId"] = image_service_id(
             live["fnDirectory"], page["maxHref"], page["imageBasename"]
         )
+        if seed.get("directoryPositionFromLabel"):
+            # Reviewed records whose METS omits blank placeholder scans that the
+            # live Digilib directory still contains: the Scaler pn equals the
+            # printed Arabic page number, while unnumbered front matter keeps
+            # its physical ORDER.
+            label = page["label"].strip()
+            page["directoryPosition"] = (
+                int(label) if label.isascii() and label.isdigit() else page["order"]
+            )
     manifester_cache = cache_dir / "manifester" / f"{volume_id}.json"
     unmatched = pages
     try:
@@ -1262,6 +1274,23 @@ def sync_volume(
             workers=workers,
         )
     valid_orders = {page["order"] for page in pages}
+    legacy_toc = live["toc"]
+    if seed.get("directoryPositionFromLabel"):
+        # The live viewer's contents address Scaler positions, not METS ORDER.
+        order_by_position = {
+            page["directoryPosition"]: page["order"] for page in pages
+        }
+        legacy_toc = [
+            {
+                **item,
+                "orders": [
+                    order_by_position[position]
+                    for position in item["orders"]
+                    if position in order_by_position
+                ],
+            }
+            for item in legacy_toc
+        ]
     effective_seed = dict(seed)
     effective_seed.setdefault(
         "samplePn",
@@ -1270,7 +1299,7 @@ def sync_volume(
     structures = merge_structures(
         volume_id,
         mets["logicalRoot"],
-        live["toc"],
+        legacy_toc,
         valid_orders,
         title,
     )

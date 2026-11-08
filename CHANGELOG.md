@@ -4,6 +4,10 @@ Notable changes to the CMG Reader interface. Corpus data is versioned separately
 
 Versions follow [Semantic Versioning](https://semver.org/): a minor version adds reader features, a patch version fixes behaviour without adding features. Each version is tagged `v<version>` with a matching GitHub release when it reaches `main`.
 
+## 0.2.1
+
+- Fix Aetius, *Liber medicinalis* XIII (Athena 18, 1905): every page after the title page showed a blank placeholder. Its METS omits the ~240 blank scans that the Digilib directory still holds, so pages are now joined to Digilib by printed page number (e.g. p. 241 → scan 241) rather than physical order. Original-viewer page links follow the same mapping.
+
 ## 0.2.0
 
 - Desktop mouse drag-to-pan: press the left button on the page and drag to move it, especially when zoomed in. Works in scroll mode and in the zoomed basic spread reader; touch gestures, scrollbars and controls are unchanged.
