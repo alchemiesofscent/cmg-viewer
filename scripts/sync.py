@@ -1210,7 +1210,13 @@ def sync_volume(
         page["imageServiceId"] = image_service_id(
             live["fnDirectory"], page["maxHref"], page["imageBasename"]
         )
-        if seed.get("directoryPositionFromLabel"):
+        position_offset = seed.get("directoryPositionOffset")
+        if isinstance(position_offset, int) and position_offset:
+            # Reviewed records whose Digilib directory has extra leading scans
+            # (e.g. duplicate title pages) absent from the METS: METS ORDER n
+            # is directory and legacy Scaler position n + offset.
+            page["directoryPosition"] = page["order"] + position_offset
+        elif seed.get("directoryPositionFromLabel"):
             # Reviewed records whose METS omits blank placeholder scans that the
             # live Digilib directory still contains: the Scaler pn equals the
             # printed Arabic page number, while unnumbered front matter keeps

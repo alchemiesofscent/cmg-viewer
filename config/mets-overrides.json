@@ -51,7 +51,8 @@
       "viewerId": "wa_Aetios_Logos_12",
       "viewerPath": "wa_Aetios_Logos_12.php",
       "metsPath": "mets/WA_Aetius_12.xml",
-      "evidence": "active-dfg-viewer-link"
+      "evidence": "active-dfg-viewer-link",
+      "directoryPositionOffset": 2
     },
     {
       "viewerId": "wa_Aetios_Logos_16",

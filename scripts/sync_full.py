@@ -155,6 +155,8 @@ def build_plans(
         )
         if override and override.get("directoryPositionFromLabel"):
             seed["directoryPositionFromLabel"] = True
+        if override and isinstance(override.get("directoryPositionOffset"), int):
+            seed["directoryPositionOffset"] = override["directoryPositionOffset"]
         plans.append(
             {
                 "kind": "mets-override" if override else "mets-predictable",

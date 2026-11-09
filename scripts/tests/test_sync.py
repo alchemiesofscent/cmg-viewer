@@ -188,6 +188,26 @@ class METSTests(unittest.TestCase):
         self.assertEqual(pages[1]["width"], 1005)
         self.assertTrue(pages[1]["imageServiceId"].endswith("!vol_0005"))
 
+    def test_reviewed_position_offset_skips_extra_leading_scans(self) -> None:
+        # Two duplicate title scans precede the METS sequence in Digilib.
+        labels = ["vol_000", "vol_0000", "vol_001", "vol_002"]
+        canvases = ",".join(
+            f'{{"type": "Canvas", "label": {{"none": ["{label}"]}}, '
+            f'"width": {1000 + index}, "height": 1500}}'
+            for index, label in enumerate(labels)
+        )
+        payload = f'{{"type": "Manifest", "items": [{canvases}]}}'.encode()
+        pages = [
+            {"order": order, "directoryPosition": order + 2,
+             "maxHref": f"https://example.test/vol-{order:03d}-max.jpg"}
+            for order in (1, 2)
+        ]
+        missing = sync.enrich_pages_from_manifester(
+            pages, payload, fn_directory="/silo10/cmg/vol/", directory_page_count=4
+        )
+        self.assertEqual(missing, [])
+        self.assertEqual([page["imageBasename"] for page in pages], ["vol_001", "vol_002"])
+
     def test_repairs_single_duplicate_physical_order_from_stable_ids(self) -> None:
         payload = METS_FIXTURE
         for old, temporary in (

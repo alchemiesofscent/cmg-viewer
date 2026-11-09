@@ -4,6 +4,10 @@ Notable changes to the CMG Reader interface. Corpus data is versioned separately
 
 Versions follow [Semantic Versioning](https://semver.org/): a minor version adds reader features, a patch version fixes behaviour without adding features. Each version is tagged `v<version>` with a matching GitHub release when it reaches `main`.
 
+## 0.2.2
+
+- Fix Aetius, *Logos* XII (ed. Kostomiris, 1892): every page showed the scan two pages earlier, so printed page numbers appeared about 2 too high. Its Digilib directory begins with two extra duplicate title scans that the METS does not list; pages are now matched two positions further on (e.g. p. 1 → scan `Seite_111`). Original-viewer page links follow the same mapping.
+
 ## 0.2.1
 
 - Fix Aetius, *Liber medicinalis* XIII (Athena 18, 1905): every page after the title page showed a blank placeholder. Its METS omits the ~240 blank scans that the Digilib directory still holds, so pages are now joined to Digilib by printed page number (e.g. p. 241 → scan 241) rather than physical order. Original-viewer page links follow the same mapping.
